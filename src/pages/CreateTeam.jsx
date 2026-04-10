@@ -172,7 +172,9 @@ export default function CreateTeam() {
 
 
               <div className="form-group">
-                <label className="form-label">UTR Number</label>
+                <label className="form-label">
+                  UTR Number <span style={{ fontSize: '0.75rem', fontWeight: 'normal', opacity: 0.8 }}>(Found in payment history/receipt)</span>
+                </label>
                 <input
                   type="text"
                   className="form-input"
@@ -183,7 +185,9 @@ export default function CreateTeam() {
               </div>
 
               <div className="form-group">
-                <label className="form-label">Transaction ID</label>
+                <label className="form-label">
+                  Transaction ID <span style={{ fontSize: '0.75rem', fontWeight: 'normal', opacity: 0.8 }}>(Found in payment history/receipt)</span>
+                </label>
                 <input
                   type="text"
                   className="form-input"
