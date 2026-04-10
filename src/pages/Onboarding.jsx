@@ -30,8 +30,8 @@ export default function Onboarding() {
   const handleProfilePic = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 500 * 1024) {
-        setError('Profile picture must be under 500KB');
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Profile picture must be under 5MB');
         return;
       }
       const reader = new FileReader();
@@ -104,7 +104,7 @@ export default function Onboarding() {
           onChange={handleProfilePic}
         />
         <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          Click to upload profile picture (max 500KB)
+          Click to upload profile picture (max 5MB)
         </p>
 
         <form onSubmit={handleSubmit}>

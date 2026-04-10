@@ -103,7 +103,7 @@ export default function CreateTeam() {
         paymentScreenshot: paymentScreenshot,
         utr: utr.trim(),
         transactionId: transactionId.trim(),
-        amount: teamType === 'individual' ? 100 : 200,
+        amount: teamType === 'individual' ? 100 : 150,
         members: [user.uid],
         createdAt: new Date().toISOString(),
       };
@@ -161,7 +161,7 @@ export default function CreateTeam() {
               >
                 <div className="dashboard-option-icon">👥</div>
                 <div className="dashboard-option-title">Team</div>
-                <div className="dashboard-option-desc">Team participation — ₹200</div>
+                <div className="dashboard-option-desc">Team participation — ₹150</div>
               </div>
             </div>
           </>
@@ -172,7 +172,7 @@ export default function CreateTeam() {
           <>
             <GlitchText text="PAYMENT" tag="h2" className="form-title" />
             <p className="form-subtitle">
-              Pay ₹{teamType === 'individual' ? '100' : '200'} to complete registration
+              Pay ₹{teamType === 'individual' ? '100' : '150'} to complete registration
             </p>
 
             {/* QR Code Placeholder */}
@@ -183,7 +183,7 @@ export default function CreateTeam() {
             </div>
 
             <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--warning)', marginBottom: '1.5rem' }}>
-              ₹{teamType === 'individual' ? '100' : '200'} — Scan & Pay
+              ₹{teamType === 'individual' ? '100' : '150'} — Scan & Pay
             </p>
 
             <div className="form-group">

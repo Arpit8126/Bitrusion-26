@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import GlitchText from '../components/GlitchText';
+import { useAuth } from '../lib/AuthContext';
 
 const typingTexts = [
   '> Initializing hackathon protocol...',
@@ -58,6 +59,7 @@ function CountUp({ target, duration = 2000 }) {
 }
 
 export default function Home() {
+  const { user } = useAuth();
   const [visible, setVisible] = useState({});
 
   useEffect(() => {
@@ -86,71 +88,128 @@ export default function Home() {
         <div className="hero-badge">⚡ CodeShastra Presents</div>
         <GlitchText text="BITRUSION'26" className="hero-title" />
         <p className="hero-subtitle">
-          The ultimate national-level hackathon where innovation meets disruption.
-          48 hours. One mission. Hack the impossible.
+          The ultimate 24-hour completely online hackathon meeting innovation and disruption.
+          25-26 April 2026. Hack the impossible.
         </p>
         <TypingEffect />
         <div className="hero-buttons">
-          <Link to="/signup">
-            <button className="btn btn-primary btn-large">Register Now</button>
-          </Link>
-          <a href="#about">
+          {user ? (
+            <Link to="/dashboard">
+              <button className="btn btn-primary btn-large">Dashboard</button>
+            </Link>
+          ) : (
+            <Link to="/signup">
+              <button className="btn btn-primary btn-large">Register Now</button>
+            </Link>
+          )}
+          <a href="#home">
             <button className="btn btn-large">Learn More</button>
           </a>
         </div>
         <div className="hero-stats">
           <div className="hero-stat">
-            <div className="hero-stat-value"><CountUp target={500} /></div>
-            <div className="hero-stat-label">Participants</div>
-          </div>
-          <div className="hero-stat">
-            <div className="hero-stat-value">₹<CountUp target={50000} /></div>
-            <div className="hero-stat-label">Prize Pool</div>
-          </div>
-          <div className="hero-stat">
-            <div className="hero-stat-value"><CountUp target={48} /></div>
+            <div className="hero-stat-value"><CountUp target={24} /></div>
             <div className="hero-stat-label">Hours</div>
           </div>
           <div className="hero-stat">
-            <div className="hero-stat-value"><CountUp target={10} /></div>
+            <div className="hero-stat-value">₹<CountUp target={15000} />+</div>
+            <div className="hero-stat-label">Prize Pool</div>
+          </div>
+          <div className="hero-stat">
+            <div className="hero-stat-value"><CountUp target={4} /></div>
+            <div className="hero-stat-label">Battle Rounds</div>
+          </div>
+          <div className="hero-stat">
+            <div className="hero-stat-value"><CountUp target={10} />+</div>
             <div className="hero-stat-label">Themes</div>
           </div>
         </div>
       </section>
 
-      {/* ========== ABOUT ========== */}
-      <section className={`section ${visible['about'] ? 'page-enter' : ''}`} id="about">
+      {/* ========== HOME (ABOUT) ========== */}
+      <section className={`section ${visible['home'] ? 'page-enter' : ''}`} id="home">
         <div className="section-header">
-          <GlitchText text="ABOUT" tag="h2" className="section-title" />
+          <GlitchText text="THE HACKATHON" tag="h2" className="section-title" />
           <div className="section-divider" />
           <p className="section-subtitle">
-            Decode the challenge. Build the solution. Own the future.
+            A 24-hour completely online battlefield. April 25-26, 2026. Open for university students globally.
           </p>
         </div>
         <div className="grid-3">
           <div className="cyber-card">
+            <div className="cyber-card-icon">🌐</div>
+            <h3 className="cyber-card-title">100% Online</h3>
+            <p className="cyber-card-text">
+              Participate from anywhere in India or across the globe. We provide the infrastructure, 
+              you provide the genius. Build the future without geographical limits.
+            </p>
+          </div>
+          <div className="cyber-card">
             <div className="cyber-card-icon">🧠</div>
-            <h3 className="cyber-card-title">Innovate</h3>
+            <h3 className="cyber-card-title">Multiple Themes</h3>
             <p className="cyber-card-text">
-              Push the boundaries of technology. Build solutions that disrupt industries
-              and challenge the status quo. From AI to blockchain, the stage is yours.
+              Conquer domains in AI/ML, Cybersecurity, WebDev, Health Care, Finance, App Dev, 
+              Open Innovation, Sustainability & Development, Agriculture, and more!
             </p>
           </div>
           <div className="cyber-card">
-            <div className="cyber-card-icon">⚡</div>
-            <h3 className="cyber-card-title">Collaborate</h3>
+            <div className="cyber-card-icon">🕵️</div>
+            <h3 className="cyber-card-title">Secret Statements</h3>
             <p className="cyber-card-text">
-              Team up with brilliant minds from across the nation. Together you will
-              architect, code, and deploy solutions under the pressure of a 48-hour sprint.
+              The exact problem statements will remain classified until the hackathon officially launches.
+              Adapt quickly to survive the disruption.
             </p>
           </div>
-          <div className="cyber-card">
-            <div className="cyber-card-icon">🏆</div>
-            <h3 className="cyber-card-title">Compete</h3>
-            <p className="cyber-card-text">
-              Battle for glory and massive prizes. Present your hack before industry judges
-              and walk away with recognition, rewards, and invaluable connections.
-            </p>
+        </div>
+      </section>
+
+      {/* ========== BATTLE ROUNDS ========== */}
+      <section className={`section ${visible['eval'] ? 'page-enter' : ''}`} id="eval" style={{ marginTop: '2rem' }}>
+        <div className="section-header">
+          <GlitchText text="EVALUATION ROUNDS" tag="h2" className="section-title" />
+          <div className="section-divider" />
+          <p className="section-subtitle">Points table (Leaderboard) updated after every round for a true and fair competition.</p>
+        </div>
+        <div className="timeline">
+          <div className="timeline-item">
+            <div className="timeline-content">
+              <div className="timeline-date">20 Points</div>
+              <h4 className="timeline-title">1. PPT Round</h4>
+              <p className="timeline-desc">
+                Teams have 10 minutes to present online to the judges. Time slots and meet links will be shared in your 
+                WhatsApp group and dashboard. (All members must join the WhatsApp group!)
+              </p>
+            </div>
+          </div>
+          <div className="timeline-item">
+            <div className="timeline-content">
+              <div className="timeline-date">30 Points</div>
+              <h4 className="timeline-title">2. Tech Evaluation Round</h4>
+              <p className="timeline-desc">
+                After the PPT round, you'll get time to build your project. We check Code Complexity, UI/UX, 
+                Feasibility, and Innovation. Time slots shared in WhatsApp and Dashboard.
+              </p>
+            </div>
+          </div>
+          <div className="timeline-item">
+            <div className="timeline-content">
+              <div className="timeline-date">10 Points</div>
+              <h4 className="timeline-title">3. The Leader Quiz</h4>
+              <p className="timeline-desc">
+                During the hackathon, we host two workshops based on Git and Deployments. 
+                Following these, a quiz will test your knowledge. Only the Team Leader gives this quiz!
+              </p>
+            </div>
+          </div>
+          <div className="timeline-item">
+            <div className="timeline-content">
+              <div className="timeline-date">40 Points</div>
+              <h4 className="timeline-title">4. Bug Bounty Round (Final)</h4>
+              <p className="timeline-desc">
+                Projects of every team will be shuffled and randomly distributed! Your team will receive a new shuffled project 
+                in your dashboard. You must redesign it, add features, change UI/UX or business perspective, and present the changes to the judges!
+              </p>
+            </div>
           </div>
         </div>
       </section>
@@ -160,33 +219,44 @@ export default function Home() {
         <div className="section-header">
           <GlitchText text="PRIZES" tag="h2" className="section-title" />
           <div className="section-divider" />
-          <p className="section-subtitle">Glory awaits the worthy. Cash prizes for the top hackers.</p>
+          <p className="section-subtitle">A ₹15,000 Prize Pool up for grabs (can increase with time).</p>
         </div>
         <div className="grid-3">
           <div className="cyber-card prize-card">
             <div className="prize-rank silver">2ND</div>
-            <div className="prize-amount">₹15,000</div>
+            <div className="prize-amount">₹5,000</div>
             <div className="prize-label">Runner Up</div>
           </div>
           <div className="cyber-card prize-card first">
             <div className="prize-rank gold">1ST</div>
-            <div className="prize-amount">₹25,000</div>
+            <div className="prize-amount">₹8,000</div>
             <div className="prize-label">Champion</div>
           </div>
           <div className="cyber-card prize-card">
             <div className="prize-rank bronze">3RD</div>
-            <div className="prize-amount">₹10,000</div>
+            <div className="prize-amount">₹2,000</div>
             <div className="prize-label">Second Runner Up</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', marginTop: '3rem' }}>
+          <div className="cyber-card" style={{ textAlign: 'center' }}>
+            <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '1.2rem' }}>4th & 5th Positions</h4>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Premium Goodies + Certificate of Appreciation.</p>
+          </div>
+          <div className="cyber-card" style={{ textAlign: 'center' }}>
+            <h4 style={{ color: 'var(--success)', marginBottom: '0.5rem', fontSize: '1.2rem' }}>All Participants</h4>
+            <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)' }}>Positions 1-5 get Certificate of Appreciation.<br/>Rest get Soft Copy of Certificate of Participation.</p>
           </div>
         </div>
       </section>
 
-      {/* ========== SCHEDULE ========== */}
+      {/* ========== SCHEDULE & WORKSHOPS ========== */}
       <section className={`section ${visible['schedule'] ? 'page-enter' : ''}`} id="schedule">
         <div className="section-header">
           <GlitchText text="SCHEDULE" tag="h2" className="section-title" />
           <div className="section-divider" />
-          <p className="section-subtitle">Mark your calendar. The countdown begins.</p>
+          <p className="section-subtitle">25-26 April 2026. Non-stop online action.</p>
         </div>
         <div className="timeline">
           <div className="timeline-item">
@@ -194,46 +264,67 @@ export default function Home() {
               <div className="timeline-date">Phase 01</div>
               <h4 className="timeline-title">Registration Opens</h4>
               <p className="timeline-desc">
-                Sign up, form your team, and prepare your weapons.
-                Early birds get exclusive perks.
+                Sign up, form your team, and prepare. Join the official WhatsApp group for critical team slots and meeting link updates.
               </p>
             </div>
           </div>
           <div className="timeline-item">
             <div className="timeline-content">
               <div className="timeline-date">Phase 02</div>
-              <h4 className="timeline-title">Opening Ceremony</h4>
+              <h4 className="timeline-title">Themes Reveal & Kickoff</h4>
               <p className="timeline-desc">
-                Kickoff with keynote speakers, theme reveal,
-                and the official hackathon countdown begins.
+                Hackathon officially starts! Problem statements released exclusively on this website.
               </p>
             </div>
           </div>
           <div className="timeline-item">
             <div className="timeline-content">
               <div className="timeline-date">Phase 03</div>
-              <h4 className="timeline-title">Hacking Begins</h4>
+              <h4 className="timeline-title">Hacking & Workshops</h4>
               <p className="timeline-desc">
-                48 hours of non-stop coding, mentorship sessions,
-                and mini-challenges to keep the energy high.
+                Code building begins. Attend the Git and Deployments workshops during the hackathon—your score depends on it!
               </p>
             </div>
           </div>
           <div className="timeline-item">
             <div className="timeline-content">
               <div className="timeline-date">Phase 04</div>
-              <h4 className="timeline-title">Submission & Judging</h4>
+              <h4 className="timeline-title">Battle Rounds Execution</h4>
               <p className="timeline-desc">
-                Submit your projects. Present to judges. The best
-                hacks will be crowned and rewarded.
+                PPT presentations, Tech Evaluation, the Leader Quiz, and finally the chaotic Bug Bounty project-swap round!
               </p>
             </div>
           </div>
         </div>
       </section>
 
+      {/* ========== CONTACT US ========== */}
+      <section className={`section ${visible['contact'] ? 'page-enter' : ''}`} id="contact">
+        <div className="section-header">
+          <GlitchText text="SUPPORT HUB" tag="h2" className="section-title" />
+          <div className="section-divider" />
+          <p className="section-subtitle">Stuck in the matrix? Reach out to us.</p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+          <div className="cyber-card" style={{ textAlign: 'center' }}>
+            <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '1.2rem' }}>Email</h4>
+            <a href="mailto:support@codeshastra.tech" style={{ color: '#fff', textDecoration: 'none', fontSize: '0.95rem' }}>
+              support@codeshastra.tech
+            </a>
+          </div>
+          <div className="cyber-card" style={{ textAlign: 'center' }}>
+            <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '1.2rem' }}>Hackathon Coordinators</h4>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+              First drop a WhatsApp message; if delayed, drop a call.<br/><br/>
+              <strong style={{ color: '#fff' }}>Rishabh Mishra:</strong> 9105280131<br/>
+              <strong style={{ color: '#fff' }}>Arpit Pandey:</strong> 8395036720
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* ========== FAQ ========== */}
-      <section className={`section ${visible['faq'] ? 'page-enter' : ''}`} id="faq">
+      <section className={`section ${visible['faq'] ? 'page-enter' : ''}`} id="faq" style={{ marginTop: '5rem' }}>
         <div className="section-header">
           <GlitchText text="FAQ" tag="h2" className="section-title" />
           <div className="section-divider" />
@@ -241,9 +332,9 @@ export default function Home() {
         </div>
         <div style={{ maxWidth: '700px', margin: '0 auto' }}>
           {[
-            { q: 'Who can participate?', a: 'Any student from any university or college across India can participate. Both individual and team registrations are accepted.' },
+            { q: 'Who can participate?', a: 'Any university student from India and outside of India can participate. Both individual and team registrations are accepted.' },
             { q: 'What is the team size?', a: 'Teams can have 2-4 members. You can also register as an individual participant.' },
-            { q: 'Is there a registration fee?', a: 'Yes. ₹100 for individual registration and ₹200 for team registration (entire team).' },
+            { q: 'Is there a registration fee?', a: 'Yes. ₹100 for individual participation and ₹150 for team participation (for the entire team, which only the Team Leader pays at once during team creation).' },
             { q: 'What do I need to bring?', a: 'Just a laptop, your creativity, and an unstoppable will to hack. Everything else, we handle.' },
             { q: 'Will there be mentors?', a: 'Yes! Industry mentors will be available throughout the hackathon to guide and help teams.' },
           ].map((faq, i) => (
@@ -257,7 +348,8 @@ export default function Home() {
         <div className="footer-brand">BITRUSION'26</div>
         <p className="footer-text">A CodeShastra Initiative</p>
         <div className="footer-links">
-          <a href="#about">About</a>
+          <a href="#home">Home</a>
+          <a href="#eval">Rounds</a>
           <a href="#prizes">Prizes</a>
           <a href="#schedule">Schedule</a>
           <a href="#faq">FAQ</a>

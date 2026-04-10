@@ -117,6 +117,15 @@ export default function Dashboard() {
         <div className="dashboard-header">
           <div className="dashboard-welcome">Welcome back, hacker</div>
           <div className="dashboard-name">{userProfile?.name}</div>
+          <a 
+            href="https://chat.whatsapp.com/HnOFr2q9rd4LeuXH3dlWpM?mode=gi_t" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="btn"
+            style={{ marginTop: '1rem', background: '#25D366', color: '#000', borderColor: '#25D366', display: 'inline-block' }}
+          >
+            💬 Join Official WhatsApp Group
+          </a>
         </div>
         <div className="dashboard-content">
           <GlitchText text="TEAM DASHBOARD" tag="h2" className="section-title" style={{ marginBottom: '2rem' }} />
@@ -283,6 +292,15 @@ export default function Dashboard() {
       <div className="dashboard-header">
         <div className="dashboard-welcome">Welcome, hacker</div>
         <div className="dashboard-name">{userProfile?.name}</div>
+        <a 
+          href="https://chat.whatsapp.com/HnOFr2q9rd4LeuXH3dlWpM?mode=gi_t" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="btn"
+          style={{ marginTop: '1rem', background: '#25D366', color: '#000', borderColor: '#25D366', display: 'inline-block' }}
+        >
+          💬 Join Official WhatsApp Group
+        </a>
       </div>
       <div className="dashboard-content">
         <div className="section-header">
@@ -296,7 +314,7 @@ export default function Dashboard() {
             <div className="dashboard-option-icon">🚀</div>
             <div className="dashboard-option-title">Create Team</div>
             <div className="dashboard-option-desc">
-              Register as individual (₹100) or create a team (₹200)
+              Register as individual (₹100) or create a team (₹150)
             </div>
           </div>
           <div className="dashboard-option" onClick={() => navigate('/join-team')}>

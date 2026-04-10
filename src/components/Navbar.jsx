@@ -24,7 +24,7 @@ export default function Navbar() {
       </Link>
 
       <ul className={`navbar-links ${menuOpen ? 'open' : ''}`}>
-        <li><a href="/#about" onClick={closeMenu}>About</a></li>
+        <li><a href="/#home" onClick={closeMenu}>Home</a></li>
         <li><a href="/#prizes" onClick={closeMenu}>Prizes</a></li>
         <li><a href="/#schedule" onClick={closeMenu}>Schedule</a></li>
         <li><a href="/#faq" onClick={closeMenu}>FAQ</a></li>

@@ -29,8 +29,8 @@ export default function Profile() {
   const handleProfilePic = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 500 * 1024) {
-        setError('Profile picture must be under 500KB');
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Profile picture must be under 5MB');
         return;
       }
       const reader = new FileReader();
