@@ -150,59 +150,60 @@ export default function CreateTeam() {
         {step === 2 && (() => {
           console.log("Current VITE_UPI_ID loaded in app:", import.meta.env.VITE_UPI_ID);
           return (
-          <>
-            <GlitchText text="PAYMENT" tag="h2" className="form-title" />
-            <p className="form-subtitle">
-              Pay ₹{teamType === 'individual' ? '100' : '150'} to complete registration
-            </p>
+            <>
+              <GlitchText text="PAYMENT" tag="h2" className="form-title" />
+              <p className="form-subtitle">
+                Pay ₹{teamType === 'individual' ? '100' : '150'} to complete registration
+              </p>
 
-            <div style={{ textAlign: 'center', margin: '2rem 0', display: 'flex', justifyContent: 'center' }}>
-              <div style={{ padding: '10px', background: '#ffffff', borderRadius: '8px', display: 'inline-block' }}>
-                <QRCodeSVG 
-                  value={`upi://pay?pa=${import.meta.env.VITE_UPI_ID}&pn=CodeShastra&am=${teamType === 'individual' ? '100.00' : '150.00'}&cu=INR`}
-                  size={200}
-                  level={"H"}
+              <div style={{ textAlign: 'center', margin: '2rem 0', display: 'flex', justifyContent: 'center' }}>
+                <div style={{ padding: '10px', background: '#ffffff', borderRadius: '8px', display: 'inline-block' }}>
+                  <QRCodeSVG
+                    value={`upi://pay?pa=${import.meta.env.VITE_UPI_ID}&pn=CodeShastra&am=${teamType === 'individual' ? '100.00' : '150.00'}&cu=INR`}
+                    size={200}
+                    level={"H"}
+                  />
+                </div>
+              </div>
+
+              <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--warning)', marginBottom: '1.5rem' }}>
+                ₹{teamType === 'individual' ? '100' : '150'} — Scan & Pay
+              </p>
+
+
+              <div className="form-group">
+                <label className="form-label">UTR Number</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter UTR number"
+                  value={utr}
+                  onChange={(e) => setUtr(e.target.value)}
                 />
               </div>
-            </div>
 
-            <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--warning)', marginBottom: '1.5rem' }}>
-              ₹{teamType === 'individual' ? '100' : '150'} — Scan & Pay
-            </p>
+              <div className="form-group">
+                <label className="form-label">Transaction ID</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Enter Transaction ID"
+                  value={transactionId}
+                  onChange={(e) => setTransactionId(e.target.value)}
+                />
+              </div>
 
-
-            <div className="form-group">
-              <label className="form-label">UTR Number</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Enter UTR number"
-                value={utr}
-                onChange={(e) => setUtr(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Transaction ID</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Enter Transaction ID"
-                value={transactionId}
-                onChange={(e) => setTransactionId(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn" onClick={() => { setStep(1); setError(''); }} style={{ flex: 1 }}>
-                ← Back
-              </button>
-              <button className="btn btn-primary" onClick={handlePaymentNext} style={{ flex: 2 }}>
-                Next →
-              </button>
-            </div>
-          </>
-        )})()}
+              <div style={{ display: 'flex', gap: '1rem' }}>
+                <button className="btn" onClick={() => { setStep(1); setError(''); }} style={{ flex: 1 }}>
+                  ← Back
+                </button>
+                <button className="btn btn-primary" onClick={handlePaymentNext} style={{ flex: 2 }}>
+                  Next →
+                </button>
+              </div>
+            </>
+          )
+        })()}
 
         {/* STEP 3: Team Name */}
         {step === 3 && (

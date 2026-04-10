@@ -114,7 +114,7 @@ export default function AdminPortal() {
 
   const stats = {
     total: teams.length,
-    pending: teams.filter(t => t.status === 'pending' || t.status === 'waiting_members').length,
+    pending: teams.filter(t => t.status === 'pending').length,
     approved: teams.filter(t => t.status === 'approved').length,
     rejected: teams.filter(t => t.status === 'rejected').length,
   };
@@ -253,13 +253,13 @@ export default function AdminPortal() {
                   {team.status.replace('_', ' ')}
                 </span>
                 <div className="admin-actions">
-                  {team.status !== 'approved' && (
+                  {team.status === 'pending' && (
                     <button className="btn btn-primary" style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem' }}
                       onClick={() => handleApprove(team.id)}>
                       ✓ Approve
                     </button>
                   )}
-                  {team.status !== 'rejected' && (
+                  {(team.status === 'pending' || team.status === 'approved') && (
                     <button className="btn btn-danger" style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem' }}
                       onClick={() => handleRejectStart(team.id)}>
                       ✗ Reject

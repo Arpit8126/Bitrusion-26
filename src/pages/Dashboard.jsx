@@ -117,9 +117,9 @@ export default function Dashboard() {
         <div className="dashboard-header">
           <div className="dashboard-welcome">Welcome back, hacker</div>
           <div className="dashboard-name">{userProfile?.name}</div>
-          <a 
-            href="https://chat.whatsapp.com/HnOFr2q9rd4LeuXH3dIWpM?mode=gi_t" 
-            target="_blank" 
+          <a
+            href="https://chat.whatsapp.com/HnOFr2q9rd4LeuXH3dIWpM?mode=gi_t"
+            target="_blank"
             rel="noopener noreferrer"
             className="btn"
             style={{ marginTop: '1rem', background: '#25D366', color: '#000', borderColor: '#25D366', display: 'inline-block' }}
