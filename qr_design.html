@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #000;
+  }
+  .qr-container {
+    width: 360px;
+    height: 420px;
+    background: linear-gradient(145deg, #0a1a10, #050a08);
+    border: 2px solid #00ff41;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    box-shadow:
+      0 0 15px rgba(0, 255, 65, 0.3),
+      0 0 40px rgba(0, 255, 65, 0.1),
+      inset 0 0 20px rgba(0, 255, 65, 0.05);
+    overflow: hidden;
+  }
+  .qr-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff41, transparent);
+  }
+  .qr-container::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, #00ff41, transparent);
+  }
+  .scan-label {
+    font-family: 'Courier New', monospace;
+    color: #00ff41;
+    font-size: 14px;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+    font-weight: bold;
+  }
+  .qr-frame {
+    padding: 12px;
+    background: #ffffff;
+    border-radius: 10px;
+    box-shadow:
+      0 0 20px rgba(0, 255, 65, 0.2),
+      0 0 40px rgba(0, 255, 65, 0.1);
+    position: relative;
+  }
+  .qr-frame img {
+    display: block;
+    width: 240px;
+    height: 240px;
+  }
+  .corner {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-color: #00ff41;
+    border-style: solid;
+  }
+  .corner.tl { top: -6px; left: -6px; border-width: 3px 0 0 3px; }
+  .corner.tr { top: -6px; right: -6px; border-width: 3px 3px 0 0; }
+  .corner.bl { bottom: -6px; left: -6px; border-width: 0 0 3px 3px; }
+  .corner.br { bottom: -6px; right: -6px; border-width: 0 3px 3px 0; }
+  .url-label {
+    font-family: 'Courier New', monospace;
+    color: #00ff41;
+    font-size: 13px;
+    letter-spacing: 2px;
+    margin-top: 16px;
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.4);
+    opacity: 0.9;
+  }
+  .bitrusion-label {
+    font-family: 'Courier New', monospace;
+    color: #e8efe8;
+    font-size: 20px;
+    letter-spacing: 4px;
+    margin-top: 6px;
+    font-weight: bold;
+    text-shadow: 0 0 12px rgba(0, 255, 65, 0.3);
+  }
+</style>
+</head>
+<body>
+  <div class="qr-container">
+    <div class="scan-label">⚡ Scan to Register ⚡</div>
+    <div class="qr-frame">
+      <div class="corner tl"></div>
+      <div class="corner tr"></div>
+      <div class="corner bl"></div>
+      <div class="corner br"></div>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=https://bitrusion.codeshastra.tech&format=png&qzone=1" alt="QR" />
+    </div>
+    <div class="url-label">bitrusion.codeshastra.tech</div>
+    <div class="bitrusion-label">BITRUSION'26</div>
+  </div>
+</body>
+</html>
