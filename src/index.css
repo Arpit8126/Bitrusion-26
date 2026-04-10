@@ -267,7 +267,7 @@ a {
 
 .navbar-links {
   display: flex;
-  gap: 2rem;
+  gap: 1.5rem;
   align-items: center;
   list-style: none;
 }
@@ -304,7 +304,6 @@ a {
 }
 
 .navbar-social-icons {
-  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -312,6 +311,11 @@ a {
 
 .navbar-social-icons a:hover {
   color: var(--primary);
+}
+
+.navbar-right {
+  display: flex;
+  align-items: center;
 }
 
 .navbar-auth-btns {
