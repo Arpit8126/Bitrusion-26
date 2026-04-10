@@ -4,6 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
 import { doc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
+import { QRCodeSVG } from 'qrcode.react';
 
 function generateJoinCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -146,7 +147,9 @@ export default function CreateTeam() {
         )}
 
         {/* STEP 2: Payment */}
-        {step === 2 && (
+        {step === 2 && (() => {
+          console.log("Current VITE_UPI_ID loaded in app:", import.meta.env.VITE_UPI_ID);
+          return (
           <>
             <GlitchText text="PAYMENT" tag="h2" className="form-title" />
             <p className="form-subtitle">
@@ -155,10 +158,10 @@ export default function CreateTeam() {
 
             <div style={{ textAlign: 'center', margin: '2rem 0', display: 'flex', justifyContent: 'center' }}>
               <div style={{ padding: '10px', background: '#ffffff', borderRadius: '8px', display: 'inline-block' }}>
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=${import.meta.env.VITE_UPI_ID}&pn=CodeShastra&am=${teamType === 'individual' ? '100.00' : '150.00'}&cu=INR`)}`}
-                  alt="Payment QR"
-                  style={{ width: '200px', height: '200px', display: 'block' }}
+                <QRCodeSVG 
+                  value={`upi://pay?pa=${import.meta.env.VITE_UPI_ID}&pn=CodeShastra&am=${teamType === 'individual' ? '100.00' : '150.00'}&cu=INR`}
+                  size={200}
+                  level={"H"}
                 />
               </div>
             </div>
@@ -199,7 +202,7 @@ export default function CreateTeam() {
               </button>
             </div>
           </>
-        )}
+        )})()}
 
         {/* STEP 3: Team Name */}
         {step === 3 && (
