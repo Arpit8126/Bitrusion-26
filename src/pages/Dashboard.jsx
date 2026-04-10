@@ -118,7 +118,7 @@ export default function Dashboard() {
           <div className="dashboard-welcome">Welcome back, hacker</div>
           <div className="dashboard-name">{userProfile?.name}</div>
           <a 
-            href="https://chat.whatsapp.com/HnOFr2q9rd4LeuXH3dlWpM?mode=gi_t" 
+            href="https://chat.whatsapp.com/HnOFr2q9rd4LeuXH3dIWpM?mode=gi_t" 
             target="_blank" 
             rel="noopener noreferrer"
             className="btn"
@@ -171,11 +171,7 @@ export default function Dashboard() {
           {teamMembers.map((member) => (
             <div className="member-card" key={member.id}>
               <div className="member-avatar">
-                {member.profilePic ? (
-                  <img src={member.profilePic} alt={member.name} />
-                ) : (
-                  member.name?.charAt(0)?.toUpperCase()
-                )}
+                {member.name?.charAt(0)?.toUpperCase()}
               </div>
               <div className="member-info">
                 <div className="member-name">{member.name}</div>
@@ -292,15 +288,6 @@ export default function Dashboard() {
       <div className="dashboard-header">
         <div className="dashboard-welcome">Welcome, hacker</div>
         <div className="dashboard-name">{userProfile?.name}</div>
-        <a 
-          href="https://chat.whatsapp.com/HnOFr2q9rd4LeuXH3dlWpM?mode=gi_t" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="btn"
-          style={{ marginTop: '1rem', background: '#25D366', color: '#000', borderColor: '#25D366', display: 'inline-block' }}
-        >
-          💬 Join Official WhatsApp Group
-        </a>
       </div>
       <div className="dashboard-content">
         <div className="section-header">

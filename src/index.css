@@ -303,6 +303,17 @@ a {
   width: 100%;
 }
 
+.navbar-social-icons {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.navbar-social-icons a:hover {
+  color: var(--primary);
+}
+
 .navbar-auth-btns {
   display: flex;
   gap: 1rem;
@@ -447,7 +458,7 @@ a {
   align-items: center;
   justify-content: center;
   text-align: center;
-  padding: 2rem;
+  padding: 5rem 2rem 2rem;
   position: relative;
   background: radial-gradient(ellipse at 20% 50%, rgba(0, 255, 65, 0.06) 0%, transparent 50%),
               radial-gradient(ellipse at 80% 20%, rgba(0, 229, 255, 0.04) 0%, transparent 40%),
@@ -1671,6 +1682,10 @@ a {
 
   .desktop-auth {
     display: none;
+  }
+
+  .navbar-social-icons {
+    display: none !important;
   }
 
   .mobile-only-auth {

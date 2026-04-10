@@ -14,7 +14,6 @@ export default function AdminPortal() {
   const [filter, setFilter] = useState('all');
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [teamMembers, setTeamMembers] = useState({});
-  const [imageModal, setImageModal] = useState(null);
   const [rejectingTeam, setRejectingTeam] = useState(null);
   const [rejectionMessage, setRejectionMessage] = useState('');
 
@@ -318,19 +317,6 @@ export default function AdminPortal() {
                   )}
                 </div>
 
-                {team.paymentScreenshot && (
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--primary)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
-                      Payment Screenshot
-                    </h4>
-                    <img
-                      src={team.paymentScreenshot}
-                      alt="Payment"
-                      className="admin-payment-img"
-                      onClick={() => setImageModal(team.paymentScreenshot)}
-                    />
-                  </div>
-                )}
 
                 <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--primary)', marginBottom: '0.75rem', textTransform: 'uppercase', letterSpacing: '2px' }}>
                   Members ({teamMembers[team.id]?.length || 0})
@@ -338,11 +324,7 @@ export default function AdminPortal() {
                 {teamMembers[team.id]?.map((member) => (
                   <div className="member-card" key={member.id}>
                     <div className="member-avatar">
-                      {member.profilePic ? (
-                        <img src={member.profilePic} alt={member.name} />
-                      ) : (
-                        member.name?.charAt(0)?.toUpperCase()
-                      )}
+                      {member.name?.charAt(0)?.toUpperCase()}
                     </div>
                     <div className="member-info" style={{ flex: 1 }}>
                       <div className="member-name">{member.name}</div>
@@ -371,12 +353,6 @@ export default function AdminPortal() {
         )}
       </div>
 
-      {/* Image Modal */}
-      {imageModal && (
-        <div className="image-modal" onClick={() => setImageModal(null)}>
-          <img src={imageModal} alt="Payment Screenshot" />
-        </div>
-      )}
     </div>
   );
 }

@@ -10,8 +10,6 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [profilePic, setProfilePic] = useState(null);
-  const [profilePicPreview, setProfilePicPreview] = useState(null);
 
   const [form, setForm] = useState({
     name: user?.displayName || '',
@@ -27,21 +25,6 @@ export default function Onboarding() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleProfilePic = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Profile picture must be under 5MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePic(reader.result);
-        setProfilePicPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,9 +49,6 @@ export default function Onboarding() {
         updatedAt: new Date().toISOString(),
       };
 
-      if (profilePic) {
-        profileData.profilePic = profilePic;
-      }
 
       await setDoc(doc(db, 'users', user.uid), profileData, { merge: true });
       
@@ -89,23 +69,6 @@ export default function Onboarding() {
 
         {error && <div className="form-error" style={{ textAlign: 'center', marginBottom: '1rem' }}>{error}</div>}
 
-        <div className="profile-pic-upload" onClick={() => document.getElementById('profile-pic-input').click()}>
-          {profilePicPreview ? (
-            <img src={profilePicPreview} alt="Profile" />
-          ) : (
-            <span className="upload-icon">👤</span>
-          )}
-        </div>
-        <input
-          id="profile-pic-input"
-          type="file"
-          accept="image/*"
-          style={{ display: 'none' }}
-          onChange={handleProfilePic}
-        />
-        <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>
-          Click to upload profile picture (max 5MB)
-        </p>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">

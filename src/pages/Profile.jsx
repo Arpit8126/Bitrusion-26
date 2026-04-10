@@ -11,7 +11,6 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [profilePicPreview, setProfilePicPreview] = useState(userProfile?.profilePic || null);
 
   const [form, setForm] = useState({
     name: userProfile?.name || '',
@@ -26,20 +25,6 @@ export default function Profile() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleProfilePic = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError('Profile picture must be under 5MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePicPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -55,7 +40,6 @@ export default function Profile() {
     try {
       await updateDoc(doc(db, 'users', user.uid), {
         ...form,
-        profilePic: profilePicPreview,
         updatedAt: new Date().toISOString(),
       });
       await refreshProfile();
@@ -75,14 +59,6 @@ export default function Profile() {
         {error && <div className="form-error" style={{ textAlign: 'center', marginBottom: '1rem' }}>{error}</div>}
         {success && <div style={{ textAlign: 'center', marginBottom: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--success)' }}>{success}</div>}
 
-        <div className="profile-pic-upload" onClick={() => document.getElementById('edit-profile-pic').click()}>
-          {profilePicPreview ? (
-            <img src={profilePicPreview} alt="Profile" />
-          ) : (
-            <span className="upload-icon">👤</span>
-          )}
-        </div>
-        <input id="edit-profile-pic" type="file" accept="image/*" style={{ display: 'none' }} onChange={handleProfilePic} />
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">

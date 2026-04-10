@@ -24,8 +24,6 @@ export default function CreateTeam() {
   const [error, setError] = useState('');
 
   // Payment form
-  const [paymentScreenshot, setPaymentScreenshot] = useState(null);
-  const [paymentPreview, setPaymentPreview] = useState(null);
   const [utr, setUtr] = useState('');
   const [transactionId, setTransactionId] = useState('');
 
@@ -35,28 +33,9 @@ export default function CreateTeam() {
   // Result
   const [joinCode, setJoinCode] = useState('');
 
-  const handleScreenshot = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      if (file.size > 1024 * 1024) {
-        setError('Screenshot must be under 1MB');
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPaymentScreenshot(reader.result);
-        setPaymentPreview(reader.result);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handlePaymentNext = () => {
     setError('');
-    if (!paymentScreenshot) {
-      setError('Please upload payment screenshot');
-      return;
-    }
     if (!utr.trim()) {
       setError('Please enter UTR number');
       return;
@@ -100,7 +79,6 @@ export default function CreateTeam() {
         leaderEmail: user.email,
         joinCode: code,
         status: teamType === 'individual' ? 'pending' : 'waiting_members',
-        paymentScreenshot: paymentScreenshot,
         utr: utr.trim(),
         transactionId: transactionId.trim(),
         amount: teamType === 'individual' ? 100 : 150,
@@ -175,37 +153,20 @@ export default function CreateTeam() {
               Pay ₹{teamType === 'individual' ? '100' : '150'} to complete registration
             </p>
 
-            {/* QR Code Placeholder */}
-            <div className="qr-placeholder">
-              <div className="qr-icon">📱</div>
-              <span>QR Code</span>
-              <span style={{ fontSize: '0.65rem' }}>Coming Soon</span>
+            <div style={{ textAlign: 'center', margin: '2rem 0', display: 'flex', justifyContent: 'center' }}>
+              <div style={{ padding: '10px', background: '#ffffff', borderRadius: '8px', display: 'inline-block' }}>
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`upi://pay?pa=${import.meta.env.VITE_UPI_ID}&pn=CodeShastra&am=${teamType === 'individual' ? '100.00' : '150.00'}&cu=INR`)}`}
+                  alt="Payment QR"
+                  style={{ width: '200px', height: '200px', display: 'block' }}
+                />
+              </div>
             </div>
 
             <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--warning)', marginBottom: '1.5rem' }}>
               ₹{teamType === 'individual' ? '100' : '150'} — Scan & Pay
             </p>
 
-            <div className="form-group">
-              <label className="form-label">Upload Payment Screenshot</label>
-              <div
-                className="form-input form-input-file"
-                onClick={() => document.getElementById('payment-ss').click()}
-              >
-                {paymentPreview ? (
-                  <img src={paymentPreview} alt="Payment" style={{ maxHeight: '150px', maxWidth: '100%' }} />
-                ) : (
-                  <>📤 Click to upload screenshot (max 1MB)</>
-                )}
-              </div>
-              <input
-                id="payment-ss"
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={handleScreenshot}
-              />
-            </div>
 
             <div className="form-group">
               <label className="form-label">UTR Number</label>

@@ -316,8 +316,14 @@ export default function Home() {
             <h4 style={{ color: 'var(--primary)', marginBottom: '0.5rem', fontSize: '1.2rem' }}>Hackathon Coordinators</h4>
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
               First drop a WhatsApp message; if delayed, drop a call.<br/><br/>
-              <strong style={{ color: '#fff' }}>Rishabh Mishra:</strong> 9105280131<br/>
+              <strong style={{ color: '#fff' }}>Rishabh Mishra:</strong> 9105280131
+              <a href="https://www.linkedin.com/in/rishabh-mishra-bab420309/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', marginLeft: '8px', verticalAlign: 'middle', display: 'inline-flex', paddingBottom: '2px' }} title="Rishabh Mishra LinkedIn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+              </a><br/>
               <strong style={{ color: '#fff' }}>Arpit Pandey:</strong> 8395036720
+              <a href="https://www.linkedin.com/in/arpit-pandey-9b3a23312/" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', marginLeft: '8px', verticalAlign: 'middle', display: 'inline-flex', paddingBottom: '2px' }} title="Arpit Pandey LinkedIn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+              </a>
             </p>
           </div>
         </div>
@@ -347,12 +353,19 @@ export default function Home() {
       <footer className="footer">
         <div className="footer-brand">BITRUSION'26</div>
         <p className="footer-text">A CodeShastra Initiative</p>
-        <div className="footer-links">
-          <a href="#home">Home</a>
-          <a href="#eval">Rounds</a>
-          <a href="#prizes">Prizes</a>
-          <a href="#schedule">Schedule</a>
-          <a href="#faq">FAQ</a>
+        <div className="footer-links" style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center' }}>
+          <a href="https://www.codeshastra.tech" target="_blank" rel="noopener noreferrer" title="Website" style={{ color: 'var(--text-secondary)' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          </a>
+          <a href="https://www.instagram.com/code___shastra?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener noreferrer" title="Instagram" style={{ color: 'var(--text-secondary)' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+          </a>
+          <a href="https://www.linkedin.com/company/code-shastra/posts/?feedView=all" target="_blank" rel="noopener noreferrer" title="LinkedIn" style={{ color: 'var(--text-secondary)' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+          </a>
+          <a href="https://www.youtube.com/@CodeShastra-w9d" target="_blank" rel="noopener noreferrer" title="YouTube" style={{ color: 'var(--text-secondary)' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"></path><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"></polygon></svg>
+          </a>
         </div>
         <p className="footer-text">© 2026 CodeShastra. All rights reserved.</p>
       </footer>
