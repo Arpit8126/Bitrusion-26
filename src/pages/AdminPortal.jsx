@@ -1,8 +1,11 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { db, auth } from '../lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 import { useAuth } from '../lib/AuthContext';
 
@@ -26,6 +29,10 @@ export default function AdminPortal() {
   const [filterUni, setFilterUni] = useState('');
   const [filterYear, setFilterYear] = useState('');
   const [filterLocation, setFilterLocation] = useState('');
+  
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
+  const dropdownRef = useRef(null);
   
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [teamMembers, setTeamMembers] = useState({});
@@ -94,6 +101,16 @@ export default function AdminPortal() {
     }
   }, [isAdmin, fetchTeams]);
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setShowExportDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
@@ -137,7 +154,7 @@ export default function AdminPortal() {
     try {
       const teamToReject = teams.find(t => t.id === rejectingTeam);
       const message = rejectionMessage.trim() || 'No reason provided.';
-      const finalMessage = `${message} (For any query reach out at support@codeshastra.tech)`;
+      const finalMessage = message;
       const submissionDate = teamToReject.updatedAt || teamToReject.createdAt;
 
       // Update team status
@@ -268,6 +285,108 @@ export default function AdminPortal() {
     archived: archivedTeams.length
   };
 
+  const getExportData = () => {
+    if (viewMode === 'users') {
+      return soloUsers.map(u => ({
+        Name: u.name,
+        Email: u.email,
+        Mobile: u.mobile || 'N/A',
+        Course: u.course || 'N/A',
+        'Year of Study': u.yearOfStudy || 'N/A',
+        University: u.university || 'N/A',
+        Location: `${u.district || ''}, ${u.state || ''}`.trim() || 'N/A'
+      }));
+    } else if (viewMode === 'participating') {
+      return participatingUsers.map(u => ({
+        Name: u.name,
+        Email: u.email,
+        Mobile: u.mobile || 'N/A',
+        Team: u.teamName,
+        'Team ID': u.teamId,
+        'Leader Name': u.teamLeaderName,
+        Course: u.course || 'N/A',
+        'Year of Study': u.yearOfStudy || 'N/A',
+        University: u.university || 'N/A',
+        Location: `${u.district || ''}, ${u.state || ''}`.trim() || 'N/A'
+      }));
+    } else if (viewMode === 'teams' && filter === 'approved') {
+      return filteredTeams.map(t => ({
+        'Team Name': t.teamName,
+        Status: t.status,
+        Amount: t.amount,
+        UTR: t.utr,
+        'Leader Name': t.leaderName,
+        'Leader Email': t.leaderEmail,
+        'Join Code': t.joinCode || 'N/A',
+        'Created At': new Date(t.createdAt).toLocaleDateString()
+      }));
+    }
+    return [];
+  };
+
+  const handleExportJSON = (data) => {
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `bitrusion_export_${viewMode}_${new Date().getTime()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportExcel = (data) => {
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Participants");
+    XLSX.writeFile(wb, `bitrusion_export_${viewMode}_${new Date().getTime()}.xlsx`);
+  };
+
+  const handleExportPDF = (data) => {
+    const doc = new jsPDF('l', 'mm', 'a4');
+    const title = `Bitrusion'26 - ${viewMode === 'users' ? 'Solo Users' : viewMode === 'participating' ? 'Participating Users' : 'Approved Teams'}`;
+    
+    doc.setFontSize(18);
+    doc.text(title, 14, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 30);
+
+    const headers = data.length > 0 ? [Object.keys(data[0])] : [];
+    const body = data.map(item => Object.values(item));
+
+    autoTable(doc, {
+      startY: 35,
+      head: headers,
+      body: body,
+      theme: 'grid',
+      styles: { fontSize: 8, font: 'helvetica' },
+      headStyles: { fillStyle: [0, 255, 65], textColor: 20 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    });
+
+    doc.save(`bitrusion_export_${viewMode}_${new Date().getTime()}.pdf`);
+  };
+
+  const handleExport = async (format) => {
+    setExportLoading(true);
+    try {
+      const data = getExportData();
+      if (data.length === 0) {
+        alert('No data available to export in current view.');
+        return;
+      }
+
+      if (format === 'json') handleExportJSON(data);
+      else if (format === 'excel') handleExportExcel(data);
+      else if (format === 'pdf') handleExportPDF(data);
+      
+      setShowExportDropdown(false);
+    } catch (err) {
+      alert('Export failed: ' + err.message);
+    }
+    setExportLoading(false);
+  };
+
   // Login screen
   if (!user || !isAdmin) {
     return (
@@ -338,13 +457,16 @@ export default function AdminPortal() {
         </div>
       </div>
 
-      <div className="admin-content" style={{ padding: '0 2rem 2rem 2rem' }}>
+      <div className="admin-content" style={{ padding: '0 1rem 2rem 1rem' }}>
         {/* View Mode Switcher */}
         <div className="admin-dash-card" style={{
           display: 'flex',
           gap: '1rem',
           marginBottom: '2rem',
-          flexWrap: 'wrap'
+          flexWrap: 'wrap',
+          overflow: 'visible', // Ensure dropdown is not clipped
+          zIndex: 100, // Stay above content cards
+          position: 'relative'
         }}>
           <button
             className={`cyber-tab-premium ${viewMode === 'teams' ? 'active' : ''}`}
@@ -370,6 +492,34 @@ export default function AdminPortal() {
           >
             Archive Vault
           </button>
+          
+          {/* Download Button Logic */}
+          {(viewMode === 'users' || viewMode === 'participating' || (viewMode === 'teams' && filter === 'approved')) && (
+            <div className="export-container" ref={dropdownRef}>
+              <button
+                className="cyber-btn-premium"
+                style={{ background: 'var(--primary)', color: '#000' }}
+                onClick={() => setShowExportDropdown(!showExportDropdown)}
+              >
+                📥 DOWNLOAD LIST
+              </button>
+              
+              {showExportDropdown && (
+                <div className="export-dropdown">
+                  <div className="export-dropdown-header">Export Format</div>
+                  <button className="export-dropdown-item" onClick={() => handleExport('pdf')} disabled={exportLoading}>
+                    📄 Portable Document (PDF)
+                  </button>
+                  <button className="export-dropdown-item" onClick={() => handleExport('excel')} disabled={exportLoading}>
+                    📊 Excel Spreadsheet
+                  </button>
+                  <button className="export-dropdown-item" onClick={() => handleExport('json')} disabled={exportLoading}>
+                    ⚙️ Data Object (JSON)
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Local Filter for Teams */}
@@ -587,9 +737,9 @@ export default function AdminPortal() {
             {soloUsers.length === 0 ? (
               <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No unaffiliated users found.</div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', gap: '1.5rem' }}>
                 {soloUsers.map((u) => (
-                  <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,255,100,0.02)', padding: '1.5rem' }}>
+                  <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,255,100,0.02)', padding: '1.5rem', maxWidth: '100%' }}>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
                       <div className="member-avatar" style={{ width: '50px', height: '50px', fontSize: '1.2rem' }}>
                         {u.name?.charAt(0)?.toUpperCase()}
@@ -628,9 +778,9 @@ export default function AdminPortal() {
           participatingUsers.length === 0 ? (
             <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No participating users found.</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))', gap: '1.5rem' }}>
               {participatingUsers.map((u) => (
-                <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,229,255,0.02)', padding: '1.5rem' }}>
+                <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,229,255,0.02)', padding: '1.5rem', maxWidth: '100%' }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
                     <div className="member-avatar" style={{ width: '50px', height: '50px', fontSize: '1.2rem', borderColor: 'var(--accent)', color: 'var(--accent)' }}>
                       {u.name?.charAt(0)?.toUpperCase()}
