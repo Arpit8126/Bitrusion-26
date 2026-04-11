@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, arrayRemove } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, arrayRemove, writeBatch } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
 
 export default function Dashboard() {
@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const fetchTeam = async () => {
     if (userProfile?.teamId) {
@@ -33,12 +34,22 @@ export default function Dashboard() {
           });
           setTeamMembers(members);
         } else {
-          // Team document was deleted
+          // Team document was deleted or doesn't exist
           setTeam(null);
+          // Clean up stale teamId in user profile
+          if (userProfile?.teamId) {
+            await updateDoc(doc(db, 'users', user.uid), {
+              teamId: null,
+              updatedAt: new Date().toISOString()
+            });
+          }
         }
       } catch (err) {
         console.warn('Failed to fetch team:', err.message);
       }
+    } else {
+      setTeam(null);
+      setTeamMembers([]);
     }
     setLoading(false);
   };
@@ -49,6 +60,10 @@ export default function Dashboard() {
 
   // Leader removes a member
   const handleRemoveMember = async (memberId) => {
+    if (team.status !== 'waiting_members') {
+      alert('Team is locked. Members cannot be removed after submission.');
+      return;
+    }
     if (!window.confirm('Are you sure you want to remove this member from the team?')) return;
     setActionLoading(true);
     try {
@@ -68,11 +83,16 @@ export default function Dashboard() {
 
   // Leader submits team for admin approval
   const handleSubmitTeam = async () => {
+    if (team.members && team.members.length < 2) {
+      alert('You need at least 2 members (1 leader + 1 member) to submit the team. Share your code to invite members!');
+      return;
+    }
     if (!window.confirm('Submit your team for admin approval? Make sure all members have joined.')) return;
     setActionLoading(true);
     try {
       await updateDoc(doc(db, 'teams', team.id), {
         status: 'pending',
+        updatedAt: new Date().toISOString()
       });
       setTeam({ ...team, status: 'pending' });
     } catch (err) {
@@ -81,15 +101,82 @@ export default function Dashboard() {
     setActionLoading(false);
   };
 
-  // Leave rejected team to try again
+  // Member or leader leaves the team
   const handleLeaveTeam = async () => {
-    if (!window.confirm('Leave this team and register again?')) return;
+    // Re-verify status from DB to prevent stale state issues
     setActionLoading(true);
     try {
-      await updateDoc(doc(db, 'users', user.uid), {
-        teamId: null,
-        updatedAt: new Date().toISOString(),
-      });
+      const teamSnap = await getDoc(doc(db, 'teams', team.id));
+      const latestStatus = teamSnap.exists() ? teamSnap.data().status : 'deleted';
+      
+      const isLocked = latestStatus !== 'waiting_members' && latestStatus !== 'rejected' && latestStatus !== 'deleted';
+      if (isLocked) {
+        alert('Team is locked. Team has been submitted by the team leader so any changes are not acceptable.');
+        setActionLoading(false);
+        await fetchTeam(); // Refresh UI to lock buttons
+        return;
+      }
+
+      const isLeader = team.leaderId === user.uid;
+
+      if (isLeader) {
+        if (!window.confirm('WARNING: As the Team Leader, if you leave, the team will be DELETED for everyone. Do you want to proceed?')) {
+          setActionLoading(false);
+          return;
+        }
+
+        const batch = writeBatch(db);
+        const submissionDate = team.updatedAt || team.createdAt;
+        const membersListForNotif = teamMembers.map(m => ({ name: m.name, email: m.email }));
+
+        // Unlink all members and notify them
+        for (const member of teamMembers) {
+          // No need to notify the leader who is leaving voluntarily
+          if (member.uid !== user.uid) {
+            // Create notification for member
+            const notifRef = doc(collection(db, 'notifications'));
+            batch.set(notifRef, {
+              userId: member.uid,
+              type: 'team_deleted',
+              teamName: team.teamName,
+              rejectionMessage: 'Team leader left or deleted the team. (For any query reach out at support@codeshastra.tech)',
+              teamDetails: membersListForNotif,
+              submissionDate: submissionDate,
+              rejectionDate: new Date().toISOString(),
+              read: false,
+            });
+
+            // Clear member's teamId
+            batch.update(doc(db, 'users', member.uid), { teamId: null });
+          }
+        }
+
+        // Clear leader's own teamId
+        batch.update(doc(db, 'users', user.uid), { teamId: null });
+
+        // Delete the team document
+        batch.delete(doc(db, 'teams', team.id));
+
+        await batch.commit();
+      } else {
+        // Regular member leaving
+        if (!window.confirm('Are you sure you want to leave this team?')) {
+          setActionLoading(false);
+          return;
+        }
+
+        // Remove from team members array
+        await updateDoc(doc(db, 'teams', team.id), {
+          members: arrayRemove(user.uid),
+        });
+
+        // Update user profile
+        await updateDoc(doc(db, 'users', user.uid), {
+          teamId: null,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      
       await refreshProfile();
       setTeam(null);
       setTeamMembers([]);
@@ -97,6 +184,12 @@ export default function Dashboard() {
       alert('Failed to leave team: ' + err.message);
     }
     setActionLoading(false);
+  };
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(team.joinCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const isLeader = team && user && team.leaderId === user.uid;
@@ -145,7 +238,7 @@ export default function Dashboard() {
               <div className="team-info-label">Status</div>
               <div className="team-info-value">
                 <span className={`status-badge status-${team.status === 'waiting_members' ? 'pending' : team.status}`}>
-                  {team.status === 'waiting_members' ? 'Waiting for Members' : team.status}
+                  {team.status === 'waiting_members' ? 'Team not submitted' : team.status}
                 </span>
               </div>
             </div>
@@ -156,10 +249,10 @@ export default function Dashboard() {
                   {team.joinCode}
                   <button
                     className="btn"
-                    style={{ fontSize: '0.6rem', padding: '0.2rem 0.5rem', marginLeft: '0.5rem' }}
-                    onClick={() => navigator.clipboard.writeText(team.joinCode)}
+                    style={{ fontSize: '0.6rem', padding: '0.2rem 0.5rem', marginLeft: '0.5rem', position: 'relative' }}
+                    onClick={handleCopyCode}
                   >
-                    📋
+                    {copied ? '✅ COPIED!' : '📋'}
                   </button>
                 </div>
               </div>
@@ -185,7 +278,7 @@ export default function Dashboard() {
                 <div>{member.university}</div>
                 <div>{member.course}</div>
               </div>
-              {isLeader && member.uid !== team.leaderId && team.status !== 'approved' && (
+              {isLeader && member.uid !== team.leaderId && team.status === 'waiting_members' && (
                 <button
                   className="btn btn-danger"
                   style={{ fontSize: '0.65rem', padding: '0.3rem 0.6rem', marginLeft: '0.5rem' }}
@@ -272,13 +365,25 @@ export default function Dashboard() {
             </div>
           )}
 
-          <button
-            className="btn"
-            style={{ marginTop: '2rem' }}
-            onClick={() => navigate('/profile')}
-          >
-            Edit Profile
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+            <button
+              className="btn"
+              onClick={() => navigate('/profile')}
+            >
+              Edit Profile
+            </button>
+            
+            {/* Allow members to leave if not locked */}
+            {(team.status === 'waiting_members' || team.status === 'rejected') && (
+              <button
+                className="btn btn-danger"
+                onClick={handleLeaveTeam}
+                disabled={actionLoading}
+              >
+                {actionLoading ? 'Leaving...' : 'Leave Team'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     );

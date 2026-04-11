@@ -5,6 +5,7 @@ import { db } from '../lib/firebase';
 import { doc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
 import { QRCodeSVG } from 'qrcode.react';
+import { useEffect } from 'react';
 
 function generateJoinCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -23,6 +24,13 @@ export default function CreateTeam() {
   const [teamType, setTeamType] = useState(null); // 'individual' or 'team'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (userProfile?.teamId) {
+      navigate('/dashboard');
+    }
+  }, [userProfile, navigate]);
 
   // Payment form
   const [utr, setUtr] = useState('');
@@ -57,10 +65,11 @@ export default function CreateTeam() {
 
     setLoading(true);
     try {
-      // Check if team name is unique
+      // Check if team name is unique (case-insensitive)
+      const nameLower = teamName.trim().toLowerCase();
       const teamQuery = query(
         collection(db, 'teams'),
-        where('teamName', '==', teamName.trim())
+        where('teamNameLowercase', '==', nameLower)
       );
       const existingTeams = await getDocs(teamQuery);
       if (!existingTeams.empty) {
@@ -74,6 +83,7 @@ export default function CreateTeam() {
 
       const teamData = {
         teamName: teamName.trim(),
+        teamNameLowercase: nameLower,
         type: teamType,
         leaderId: user.uid,
         leaderName: userProfile.name,
@@ -264,9 +274,11 @@ export default function CreateTeam() {
                   style={{ marginTop: '1rem', fontSize: '0.75rem' }}
                   onClick={() => {
                     navigator.clipboard.writeText(joinCode);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
                   }}
                 >
-                  📋 Copy Code
+                  {copied ? '✅ COPIED!' : '📋 Copy Code'}
                 </button>
               </div>
             )}

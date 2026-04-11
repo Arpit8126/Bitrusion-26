@@ -9,7 +9,7 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext(null);
 
@@ -76,17 +76,43 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    let unsubscribeProfile = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
+      
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
       if (firebaseUser) {
-        await fetchProfile(firebaseUser.uid);
+        // Reactive profile listener
+        unsubscribeProfile = onSnapshot(doc(db, 'users', firebaseUser.uid), async (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+            setUserProfile(data);
+            cacheProfile(data);
+          } else {
+            setUserProfile(null);
+            cacheProfile(null);
+          }
+          setLoading(false);
+        }, (err) => {
+          console.warn('Profile listener error:', err);
+          setLoading(false);
+        });
       } else {
         setUserProfile(null);
         cacheProfile(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
 
   const signup = async (email, password) => {

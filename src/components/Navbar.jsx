@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
+import NotificationCenter from './NotificationCenter';
 
 export default function Navbar() {
   const { user, logout } = useAuth();
@@ -96,6 +97,7 @@ export default function Navbar() {
         <div className="navbar-auth-btns desktop-auth">
           {user ? (
             <>
+              <NotificationCenter />
               <Link to="/dashboard">
                 <button className="btn">Dashboard</button>
               </Link>
@@ -114,6 +116,13 @@ export default function Navbar() {
             </>
           )}
         </div>
+
+        {/* Mobile notification icon - visible only when logged in and on mobile */}
+        {user && (
+          <div className="mobile-notification-nav">
+            <NotificationCenter />
+          </div>
+        )}
 
         <button className="hamburger" onClick={() => setMenuOpen(!menuOpen)}>
           <span />

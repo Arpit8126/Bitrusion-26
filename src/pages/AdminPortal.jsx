@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { db, auth } from '../lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import { doc, getDoc, collection, getDocs, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
 
 export default function AdminPortal() {
@@ -90,21 +90,57 @@ export default function AdminPortal() {
 
   const handleRejectConfirm = async () => {
     if (!rejectingTeam) return;
+    setLoading(true);
     try {
+      const teamToReject = teams.find(t => t.id === rejectingTeam);
+      const message = rejectionMessage.trim() || 'No reason provided.';
+      const finalMessage = `${message} (For any query reach out at support@codeshastra.tech)`;
+      const submissionDate = teamToReject.updatedAt || teamToReject.createdAt;
+      
+      // Update team status
       await updateDoc(doc(db, 'teams', rejectingTeam), {
         status: 'rejected',
-        rejectionMessage: rejectionMessage.trim() || 'No reason provided.',
+        rejectionMessage: finalMessage,
       });
+
+      // Notify each member and clear their teamId
+      const batch = writeBatch(db);
+      const members = teamMembers[rejectingTeam] || [];
+      
+      for (const member of members) {
+        // Create notification
+        const notifRef = doc(collection(db, 'notifications'));
+        batch.set(notifRef, {
+          userId: member.uid,
+          type: 'team_rejection',
+          teamName: teamToReject.teamName,
+          rejectionMessage: finalMessage,
+          teamDetails: members.map(m => ({ name: m.name, email: m.email })),
+          submissionDate: submissionDate,
+          rejectionDate: new Date().toISOString(),
+          read: false,
+        });
+
+        // Clear user's teamId
+        const userRef = doc(db, 'users', member.uid);
+        batch.update(userRef, { teamId: null });
+      }
+
+      await batch.commit();
+
       setTeams(teams.map(t => t.id === rejectingTeam ? {
         ...t,
         status: 'rejected',
-        rejectionMessage: rejectionMessage.trim() || 'No reason provided.',
+        rejectionMessage: message,
       } : t));
       setRejectingTeam(null);
       setRejectionMessage('');
+      
+      await fetchTeams();
     } catch (err) {
       alert('Failed to reject: ' + err.message);
     }
+    setLoading(false);
   };
 
   const filteredTeams = teams.filter(t => {
@@ -209,34 +245,6 @@ export default function AdminPortal() {
           </div>
         )}
 
-        {/* Rejection Modal */}
-        {rejectingTeam && (
-          <div className="image-modal" onClick={(e) => { if (e.target === e.currentTarget) setRejectingTeam(null); }}>
-            <div className="form-container" style={{ maxWidth: '450px' }} onClick={(e) => e.stopPropagation()}>
-              <GlitchText text="REJECT TEAM" tag="h2" className="form-title" />
-              <p className="form-subtitle">Provide a reason for rejection (visible to user)</p>
-              <div className="form-group">
-                <label className="form-label">Rejection Reason</label>
-                <textarea
-                  className="form-input"
-                  rows={4}
-                  placeholder="e.g., Payment screenshot unclear, UTR number invalid..."
-                  value={rejectionMessage}
-                  onChange={(e) => setRejectionMessage(e.target.value)}
-                  style={{ resize: 'vertical', minHeight: '80px' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button className="btn" style={{ flex: 1 }} onClick={() => setRejectingTeam(null)}>
-                  Cancel
-                </button>
-                <button className="btn btn-danger" style={{ flex: 2 }} onClick={handleRejectConfirm}>
-                  ✗ Confirm Rejection
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Team cards */}
         {filteredTeams.map((team) => (
@@ -353,6 +361,34 @@ export default function AdminPortal() {
         )}
       </div>
 
+      {/* Rejection Modal moved to root for better visibility */}
+      {rejectingTeam && (
+        <div className="image-modal" style={{ position: 'fixed', zIndex: 11000 }} onClick={(e) => { if (e.target === e.currentTarget) setRejectingTeam(null); }}>
+          <div className="form-container" style={{ maxWidth: '450px', background: 'var(--bg-dark)', border: '1px solid var(--primary)' }} onClick={(e) => e.stopPropagation()}>
+            <GlitchText text="REJECT TEAM" tag="h2" className="form-title" />
+            <p className="form-subtitle">Provide a reason for rejection (visible to user)</p>
+            <div className="form-group">
+              <label className="form-label">Rejection Reason</label>
+              <textarea
+                className="form-input"
+                rows={4}
+                placeholder="e.g., Payment screenshot unclear, UTR number invalid..."
+                value={rejectionMessage}
+                onChange={(e) => setRejectionMessage(e.target.value)}
+                style={{ resize: 'vertical', minHeight: '80px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => setRejectingTeam(null)}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" style={{ flex: 2 }} onClick={handleRejectConfirm} disabled={loading}>
+                {loading ? 'Rejecting...' : '✗ Confirm Rejection'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

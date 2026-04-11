@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
@@ -6,8 +6,14 @@ import { doc, updateDoc, collection, query, where, getDocs, arrayUnion } from 'f
 import GlitchText from '../components/GlitchText';
 
 export default function JoinTeam() {
-  const { user, refreshProfile } = useAuth();
+  const { user, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (userProfile?.teamId) {
+      navigate('/dashboard');
+    }
+  }, [userProfile, navigate]);
   const [joinCode, setJoinCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -42,6 +48,13 @@ export default function JoinTeam() {
       // Check if team is full (max 4 members)
       if (teamData.members && teamData.members.length >= 4) {
         setError('This team is already full (maximum 4 members).');
+        setLoading(false);
+        return;
+      }
+
+      // Check if team is locked (already submitted)
+      if (teamData.status !== 'waiting_members' && teamData.status !== 'rejected') {
+        setError('This team has already been submitted for approval. No new members can join.');
         setLoading(false);
         return;
       }

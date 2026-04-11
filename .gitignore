@@ -31,3 +31,6 @@ setup-admin.js
 *.njsproj
 *.sln
 *.sw?
+
+# Email Templates
+promo_email.html
