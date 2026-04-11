@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, updateDoc, collection, query, where, getDocs, writeBatch } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect } from 'react';
@@ -118,6 +118,15 @@ export default function CreateTeam() {
         teamId: teamId,
         updatedAt: new Date().toISOString(),
       });
+
+      // CLEANUP: Delete all pending join requests for this user
+      const reqsQ = query(collection(db, 'join_requests'), where('userId', '==', user.uid));
+      const reqsSnap = await getDocs(reqsQ);
+      if (!reqsSnap.empty) {
+        const batch = writeBatch(db);
+        reqsSnap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
 
       if (code) setJoinCode(code);
       await refreshProfile();

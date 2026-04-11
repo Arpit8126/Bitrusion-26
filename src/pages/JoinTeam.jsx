@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, updateDoc, collection, query, where, getDocs, arrayUnion } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, arrayUnion, writeBatch } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
 
 export default function JoinTeam() {
@@ -76,6 +76,15 @@ export default function JoinTeam() {
         teamId: teamDoc.id,
         updatedAt: new Date().toISOString(),
       });
+
+      // CLEANUP: Delete all pending join requests for this user
+      const reqsQ = query(collection(db, 'join_requests'), where('userId', '==', user.uid));
+      const reqsSnap = await getDocs(reqsQ);
+      if (!reqsSnap.empty) {
+        const batch = writeBatch(db);
+        reqsSnap.forEach(d => batch.delete(d.ref));
+        await batch.commit();
+      }
 
       setTeamName(teamData.teamName);
       setSuccess(true);

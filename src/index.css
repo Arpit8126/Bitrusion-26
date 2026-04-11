@@ -1313,7 +1313,9 @@ a {
 
 .admin-stats {
   display: flex;
-  gap: 2rem;
+  gap: 1.2rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .admin-stat {

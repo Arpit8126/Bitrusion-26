@@ -92,7 +92,7 @@ export default function NotificationCenter() {
                 <div key={n.id} className={`notification-item ${n.read ? 'read' : 'unread'}`} onClick={() => markAsRead(n.id)}>
                   <div className="notification-item-header">
                     <span className="notification-type" style={{ color: n.type === 'team_deleted' ? 'var(--warning)' : 'var(--danger)' }}>
-                      {n.type === 'team_deleted' ? 'Team Deleted' : 'Team Rejected'}
+                      {n.type === 'team_deleted' ? 'Team Deleted' : n.type === 'join_rejected' ? 'Team Join Request Rejected' : 'Team Rejected'}
                     </span>
                     <span className="notification-time">{new Date(n.rejectionDate).toLocaleDateString()}</span>
                   </div>
@@ -105,8 +105,8 @@ export default function NotificationCenter() {
                   </div>
 
                   <div className="notification-details">
-                    <div className="detail-row"><span>Submitted:</span> {new Date(n.submissionDate).toLocaleString()}</div>
-                    <div className="detail-row"><span>{n.type === 'team_deleted' ? 'Deleted' : 'Rejected'}:</span> {new Date(n.rejectionDate).toLocaleString()}</div>
+                    <div className="detail-row"><span>Submitted:</span> {n.submissionDate ? new Date(n.submissionDate).toLocaleString() : 'N/A'}</div>
+                    <div className="detail-row"><span>{n.type === 'team_deleted' ? 'Deleted' : 'Rejected'}:</span> {n.rejectionDate ? new Date(n.rejectionDate).toLocaleString() : 'N/A'}</div>
                     <div className="detail-members">
                       <strong>Members:</strong>
                       {n.teamDetails?.map((m, i) => (

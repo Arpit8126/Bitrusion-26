@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 import { db } from '../lib/firebase';
-import { doc, getDoc, updateDoc, deleteDoc, collection, query, where, getDocs, arrayRemove, writeBatch } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, collection, query, where, getDocs, arrayRemove, writeBatch } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
 
 export default function Dashboard() {
@@ -13,6 +13,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  
+  // Recruitment System States
+  const [availableTeams, setAvailableTeams] = useState([]);
+  const [myRequests, setMyRequests] = useState([]);
+  const [incomingRequests, setIncomingRequests] = useState([]);
 
   const fetchTeam = async () => {
     if (userProfile?.teamId) {
@@ -54,8 +59,67 @@ export default function Dashboard() {
     setLoading(false);
   };
 
+  const fetchRecruitmentData = async () => {
+    if (!user) return;
+    
+    // 1. Fetch available teams (only if user has no team)
+    if (!userProfile?.teamId) {
+      const q = query(
+        collection(db, 'teams'),
+        where('status', '==', 'waiting_members'),
+        where('type', '==', 'team')
+      );
+      const snap = await getDocs(q);
+      const teamsList = [];
+      for (const d of snap.docs) {
+        const data = d.data();
+        // DOUBLE CHECK: Only show teams with < 4 members and NOT individual teams
+        if (data.members.length < 4 && data.type === 'team' && data.status === 'waiting_members') {
+          // Fetch leader details
+          const leaderSnap = await getDoc(doc(db, 'users', data.leaderId));
+          // Fetch members details
+          const memsQuery = query(collection(db, 'users'), where('teamId', '==', d.id));
+          const memsSnap = await getDocs(memsQuery);
+          const mems = memsSnap.docs.map(m => m.data());
+          
+          teamsList.push({ 
+            id: d.id, 
+            ...data, 
+            leader: leaderSnap.exists() ? leaderSnap.data() : null,
+            fullMembers: mems
+          });
+        }
+      }
+      setAvailableTeams(teamsList);
+
+      // 2. Fetch my pending requests
+      const reqQ = query(
+        collection(db, 'join_requests'),
+        where('userId', '==', user.uid),
+        where('status', '==', 'pending')
+      );
+      const reqSnap = await getDocs(reqQ);
+      setMyRequests(reqSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+    }
+
+    // 3. Fetch incoming requests (only if leader)
+    if (userProfile?.teamId) {
+      const teamSnap = await getDoc(doc(db, 'teams', userProfile.teamId));
+      if (teamSnap.exists() && teamSnap.data().leaderId === user.uid) {
+        const incQ = query(
+          collection(db, 'join_requests'),
+          where('teamId', '==', userProfile.teamId),
+          where('status', '==', 'pending')
+        );
+        const incSnap = await getDocs(incQ);
+        setIncomingRequests(incSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+      }
+    }
+  };
+
   useEffect(() => {
     fetchTeam();
+    fetchRecruitmentData();
   }, [userProfile]);
 
   // Leader removes a member
@@ -126,6 +190,7 @@ export default function Dashboard() {
         }
 
         // Prepare full member details for audit trail
+        const batch = writeBatch(db);
         const fullMemberDetails = teamMembers.map(m => ({ 
           uid: m.uid, 
           name: m.name, 
@@ -160,7 +225,7 @@ export default function Dashboard() {
               teamName: team.teamName,
               rejectionMessage: 'Team leader left or deleted the team. (For any query reach out at support@codeshastra.tech)',
               teamDetails: fullMemberDetails.map(m => ({ name: m.name, email: m.email })),
-              submissionDate: submissionDate,
+              submissionDate: team.updatedAt || new Date().toISOString(),
               rejectionDate: new Date().toISOString(),
               read: false,
             });
@@ -189,11 +254,20 @@ export default function Dashboard() {
           members: arrayRemove(user.uid),
         });
 
-        // Update user profile
+        // Update user profile with teamId
         await updateDoc(doc(db, 'users', user.uid), {
           teamId: null,
           updatedAt: new Date().toISOString(),
         });
+
+        // CLEANUP: Delete all pending join requests for this user
+        const reqsQ = query(collection(db, 'join_requests'), where('userId', '==', user.uid));
+        const reqsSnap = await getDocs(reqsQ);
+        if (!reqsSnap.empty) {
+          const batch = writeBatch(db);
+          reqsSnap.forEach(d => batch.delete(d.ref));
+          await batch.commit();
+        }
       }
       
       await refreshProfile();
@@ -201,6 +275,122 @@ export default function Dashboard() {
       setTeamMembers([]);
     } catch (err) {
       alert('Failed to leave team: ' + err.message);
+    }
+    setActionLoading(false);
+  };
+
+  const handleSendRequest = async (targetTeam) => {
+    if (myRequests.length >= 3) {
+      alert('You can only have 3 pending requests at a time. Cancel one to apply elsewhere.');
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const reqRef = doc(collection(db, 'join_requests'));
+      await setDoc(reqRef, {
+        userId: user.uid,
+        teamId: targetTeam.id,
+        teamName: targetTeam.teamName,
+        leaderId: targetTeam.leaderId,
+        status: 'pending',
+        timestamp: new Date().toISOString(),
+        applicantDetails: {
+          name: userProfile.name || 'Anonymous',
+          email: userProfile.email || user.email,
+          gender: userProfile.gender || 'N/A',
+          university: userProfile.university || 'N/A',
+          course: userProfile.course || 'N/A',
+          location: (userProfile.district && userProfile.state) 
+            ? `${userProfile.district}, ${userProfile.state}` 
+            : 'N/A'
+        }
+      });
+      await fetchRecruitmentData();
+      alert('Request sent successfully!');
+    } catch (err) {
+      alert('Failed to send request: ' + err.message);
+    }
+    setActionLoading(false);
+  };
+
+  const handleCancelRequest = async (requestId) => {
+    setActionLoading(true);
+    try {
+      await deleteDoc(doc(db, 'join_requests', requestId));
+      await fetchRecruitmentData();
+    } catch (err) {
+      alert('Failed to cancel request: ' + err.message);
+    }
+    setActionLoading(false);
+  };
+
+  const handleApproveRequest = async (request) => {
+    setActionLoading(true);
+    try {
+      const teamRef = doc(db, 'teams', team.id);
+      const teamSnap = await getDoc(teamRef);
+      const currentMembers = teamSnap.data().members || [];
+      
+      if (currentMembers.length >= 4) {
+        alert('Team is already full (Max 4).');
+        setActionLoading(false);
+        return;
+      }
+
+      const batch = writeBatch(db);
+      
+      // 1. Add to team
+      batch.update(teamRef, {
+        members: [...currentMembers, request.userId]
+      });
+
+      // 2. Link user
+      batch.update(doc(db, 'users', request.userId), {
+        teamId: team.id,
+        updatedAt: new Date().toISOString()
+      });
+
+      // 3. Delete ALL pending requests for this user
+      const userReqsQ = query(collection(db, 'join_requests'), where('userId', '==', request.userId));
+      const userReqsSnap = await getDocs(userReqsQ);
+      userReqsSnap.forEach(d => batch.delete(d.ref));
+
+      await batch.commit();
+      await fetchTeam();
+      await fetchRecruitmentData();
+      alert('Member approved and joined!');
+    } catch (err) {
+      alert('Failed to approve: ' + err.message);
+    }
+    setActionLoading(false);
+  };
+
+  const handleRejectRequest = async (request) => {
+    if (!window.confirm('Reject this joining request?')) return;
+    setActionLoading(true);
+    try {
+      const batch = writeBatch(db);
+      
+      // 1. Delete request
+      batch.delete(doc(db, 'join_requests', request.id));
+      
+      // 2. Create notification
+      const notifRef = doc(collection(db, 'notifications'));
+      batch.set(notifRef, {
+        userId: request.userId,
+        type: 'join_rejected',
+        teamName: team.teamName,
+        rejectionMessage: `Your request to join ${team.teamName} is rejected.`,
+        submissionDate: request.timestamp || new Date().toISOString(),
+        rejectionDate: new Date().toISOString(),
+        teamDetails: teamMembers.map(m => ({ name: m.name, email: m.email })),
+        read: false
+      });
+
+      await batch.commit();
+      await fetchRecruitmentData();
+    } catch (err) {
+      alert('Failed to reject: ' + err.message);
     }
     setActionLoading(false);
   };
@@ -293,9 +483,10 @@ export default function Dashboard() {
                   {member.uid === team.leaderId ? '★ Leader' : 'Member'}
                 </div>
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)', textAlign: 'right', flex: 1 }}>
+              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)', textAlign: 'right', flex: 1, paddingRight: '1rem' }}>
+                <div style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{member.email}</div>
+                <div>{member.gender || 'N/A'} • {member.course}</div>
                 <div>{member.university}</div>
-                <div>{member.course}</div>
               </div>
               {isLeader && member.uid !== team.leaderId && team.status === 'waiting_members' && (
                 <button
@@ -309,6 +500,35 @@ export default function Dashboard() {
               )}
             </div>
           ))}
+
+          {/* Incoming Join Requests (Leader only) */}
+          {isLeader && team.status === 'waiting_members' && incomingRequests.length > 0 && (
+             <div style={{ marginTop: '3rem' }}>
+                <h3 style={{ fontFamily: 'var(--font-display)', color: 'var(--accent)', fontSize: '1rem', letterSpacing: '2px', marginBottom: '1.5rem', textTransform: 'uppercase' }}>
+                   ⚡ Incoming Joining Requests ({incomingRequests.length})
+                </h3>
+                {incomingRequests.map(req => (
+                  <div className="member-card" key={req.id} style={{ borderLeft: '4px solid var(--accent)', background: 'rgba(0, 229, 255, 0.05)' }}>
+                    <div className="member-info" style={{ flex: 2 }}>
+                      <div className="member-name">{req.applicantDetails.name} <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>({req.applicantDetails.gender})</span></div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 'bold' }}>{req.applicantDetails.email}</div>
+                      <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                        {req.applicantDetails.course} @ {req.applicantDetails.university}
+                      </div>
+                      <div style={{ fontSize: '0.7rem', opacity: 0.8 }}>📍 {req.applicantDetails.location}</div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button className="btn btn-primary" style={{ fontSize: '0.7rem' }} onClick={() => handleApproveRequest(req)} disabled={actionLoading}>
+                        Approve
+                      </button>
+                      <button className="btn btn-danger" style={{ fontSize: '0.7rem' }} onClick={() => handleRejectRequest(req)} disabled={actionLoading}>
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+             </div>
+          )}
 
           {/* Leader: Submit Team for Approval (when status is waiting_members) */}
           {isLeader && team.status === 'waiting_members' && (
@@ -437,6 +657,82 @@ export default function Dashboard() {
               Enter a team code to join an existing team
             </div>
           </div>
+        </div>
+
+        {/* Recruitment Board for Solo Users */}
+        <div style={{ marginTop: '4rem' }}>
+           <GlitchText text="FIND YOUR SQUAD" tag="h2" className="section-title" style={{ fontSize: '1.5rem', marginBottom: '1rem' }} />
+           <p className="section-subtitle" style={{ marginBottom: '2rem' }}>Recruiting teams looking for fellow hackers.</p>
+           
+           {/* My Current Requests */}
+           {myRequests.length > 0 && (
+             <div style={{ marginBottom: '3rem' }}>
+                <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--warning)', letterSpacing: '2px', marginBottom: '1rem' }}>
+                   PENDING REQUESTS ({myRequests.length}/3)
+                </h4>
+                {myRequests.map(req => (
+                  <div className="member-card" key={req.id} style={{ borderColor: 'var(--warning)', background: 'rgba(255, 170, 0, 0.05)' }}>
+                    <div className="member-info">
+                      <div className="member-name">{req.teamName}</div>
+                      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Waiting for leader approval...</div>
+                    </div>
+                    <button className="btn btn-danger" style={{ fontSize: '0.7rem' }} onClick={() => handleCancelRequest(req.id)} disabled={actionLoading}>
+                      Cancel Request
+                    </button>
+                  </div>
+                ))}
+             </div>
+           )}
+
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', gap: '1.5rem' }}>
+             {availableTeams.length === 0 ? (
+               <div className="notification-empty" style={{ gridColumn: '1/-1', background: 'rgba(255,255,255,0.02)' }}>
+                  No recruiting teams found. Check back later or create your own!
+               </div>
+             ) : (
+               availableTeams.map(t => (
+                 <div key={t.id} className="cyber-card" style={{ padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+                       <h3 style={{ color: 'var(--primary)', fontFamily: 'var(--font-display)', fontSize: '1.1rem' }}>{t.teamName}</h3>
+                       <div style={{ background: 'rgba(0, 255, 65, 0.1)', padding: '2px 8px', borderRadius: '4px', fontSize: '0.7rem', color: 'var(--primary)' }}>
+                          {t.members.length}/4 Members
+                       </div>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                       <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Team Leader</div>
+                       <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                          <div className="member-avatar" style={{ width: '35px', height: '35px', fontSize: '1rem' }}>{t.leader?.name?.charAt(0)}</div>
+                          <div>
+                             <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{t.leader?.name} <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>({t.leader?.gender})</span></div>
+                             <div style={{ fontSize: '0.75rem', color: 'var(--primary)' }}>{t.leader?.email}</div>
+                             <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{t.leader?.course} @ {t.leader?.university}</div>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                       <div style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Current Members</div>
+                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          {t.fullMembers.map(m => (
+                             <div key={m.uid} style={{ fontSize: '0.8rem', padding: '4px 10px', background: 'rgba(255,255,255,0.05)', borderRadius: '20px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                {m.name}
+                             </div>
+                          ))}
+                       </div>
+                    </div>
+
+                    <button 
+                       className="btn btn-primary btn-block" 
+                       onClick={() => handleSendRequest(t)} 
+                       disabled={actionLoading || myRequests.some(r => r.teamId === t.id)}
+                    >
+                       {myRequests.some(r => r.teamId === t.id) ? 'Request Sent' : '> Send Join Request'}
+                    </button>
+                 </div>
+               ))
+             )}
+           </div>
         </div>
 
         <button

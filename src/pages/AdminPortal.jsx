@@ -18,7 +18,7 @@ export default function AdminPortal() {
   const [teams, setTeams] = useState([]);
   const [archivedTeams, setArchivedTeams] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
-  const [viewMode, setViewMode] = useState('teams'); // 'teams', 'users', 'participating', 'archives'
+  const [viewMode, setViewMode] = useState('teams'); // 'teams', 'unassigned', 'confirmed', 'pending_members', 'archives'
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
@@ -171,8 +171,10 @@ export default function AdminPortal() {
         name: m.name,
         email: m.email,
         mobile: m.mobile,
-        university: m.university,
+        gender: m.gender,
         course: m.course,
+        university: m.university,
+        yearOfStudy: m.yearOfStudy,
         state: m.state,
         district: m.district
       }));
@@ -232,7 +234,8 @@ export default function AdminPortal() {
     return t.status === filter;
   });
 
-  const soloUsers = allUsers.filter(u => !u.teamId && u.uid !== user?.uid).filter(u => {
+  // 1. Unassigned Users (No team created, none joined)
+  const unassignedUsers = allUsers.filter(u => !u.teamId && u.uid !== user?.uid).filter(u => {
     const search = userSearchTerm.toLowerCase();
     const uni = filterUni.toLowerCase();
     const year = filterYear.toLowerCase();
@@ -246,15 +249,20 @@ export default function AdminPortal() {
     return matchesSearch && matchesUni && matchesYear && matchesLoc;
   });
 
-  const participatingUsers = allUsers.filter(u => u.teamId && u.uid !== user?.uid).map(u => {
+  // Helper to map team data to users
+  const mapUserWithTeam = (u) => {
     const team = teams.find(t => t.id === u.teamId);
     return {
       ...u,
       teamName: team?.teamName || 'N/A',
+      teamStatus: team?.status || 'N/A',
       teamLeaderId: team?.leaderId || 'N/A',
       teamLeaderName: team?.leaderName || 'N/A'
     };
-  }).filter(u => {
+  };
+
+  // Common filter for participating users (both confirmed and pending)
+  const filterParticipating = (u) => {
     const search = participatingSearchTerm.toLowerCase();
     const uni = filterUni.toLowerCase();
     const year = filterYear.toLowerCase();
@@ -269,7 +277,21 @@ export default function AdminPortal() {
     const matchesLoc = !loc || u.district?.toLowerCase().includes(loc) || u.state?.toLowerCase().includes(loc);
 
     return matchesSearch && matchesUni && matchesYear && matchesLoc;
-  });
+  };
+
+  // 2. Confirmed Participants (Approved Teams)
+  const confirmedUsers = allUsers
+    .filter(u => u.teamId && u.uid !== user?.uid)
+    .map(mapUserWithTeam)
+    .filter(u => u.teamStatus === 'approved')
+    .filter(filterParticipating);
+
+  // 3. Pending/Draft Members (Submitted or Waiting)
+  const pendingMembers = allUsers
+    .filter(u => u.teamId && u.uid !== user?.uid)
+    .map(mapUserWithTeam)
+    .filter(u => u.teamStatus === 'pending' || u.teamStatus === 'waiting_members')
+    .filter(filterParticipating);
 
   const filteredArchives = archivedTeams.filter(t => {
     const search = archiveSearchTerm.toLowerCase();
@@ -279,28 +301,34 @@ export default function AdminPortal() {
 
   const stats = {
     total: teams.length,
-    pending: teams.filter(t => t.status === 'pending').length,
-    approved: teams.filter(t => t.status === 'approved').length,
-    solo: soloUsers.length,
+    pendingTeams: teams.filter(t => t.status === 'pending').length,
+    approvedTeams: teams.filter(t => t.status === 'approved').length,
+    unassigned: unassignedUsers.length,
+    confirmedMembers: confirmedUsers.length,
+    pendingMembers: pendingMembers.length,
     archived: archivedTeams.length
   };
 
   const getExportData = () => {
-    if (viewMode === 'users') {
-      return soloUsers.map(u => ({
+    if (viewMode === 'unassigned') {
+      return unassignedUsers.map(u => ({
         Name: u.name,
         Email: u.email,
         Mobile: u.mobile || 'N/A',
+        Gender: u.gender || 'N/A',
         Course: u.course || 'N/A',
         'Year of Study': u.yearOfStudy || 'N/A',
         University: u.university || 'N/A',
         Location: `${u.district || ''}, ${u.state || ''}`.trim() || 'N/A'
       }));
-    } else if (viewMode === 'participating') {
-      return participatingUsers.map(u => ({
+    } else if (viewMode === 'confirmed' || viewMode === 'pending_members') {
+      const list = viewMode === 'confirmed' ? confirmedUsers : pendingMembers;
+      return list.map(u => ({
         Name: u.name,
         Email: u.email,
         Mobile: u.mobile || 'N/A',
+        Gender: u.gender || 'N/A',
+        Status: u.teamStatus.toUpperCase(),
         Team: u.teamName,
         'Team ID': u.teamId,
         'Leader Name': u.teamLeaderName,
@@ -434,13 +462,17 @@ export default function AdminPortal() {
             <div className="admin-stat-value">{stats.total}</div>
             <div className="admin-stat-label">Total Teams</div>
           </div>
-          <div className="admin-stat">
-            <div className="admin-stat-value" style={{ color: 'var(--warning)' }}>{stats.pending}</div>
-            <div className="admin-stat-label">Pending Approval</div>
+          <div className="admin-stat" style={{ cursor: 'pointer' }} onClick={() => setViewMode('pending_members')}>
+            <div className="admin-stat-value" style={{ color: 'var(--warning)' }}>{stats.pendingMembers}</div>
+            <div className="admin-stat-label">Pending/Draft Members</div>
           </div>
-          <div className="admin-stat" style={{ cursor: 'pointer' }} onClick={() => setViewMode('users')}>
-            <div className="admin-stat-value" style={{ color: 'var(--accent)' }}>{stats.solo}</div>
-            <div className="admin-stat-label">Solo Users</div>
+          <div className="admin-stat" style={{ cursor: 'pointer' }} onClick={() => setViewMode('unassigned')}>
+            <div className="admin-stat-value" style={{ color: 'var(--accent)' }}>{stats.unassigned}</div>
+            <div className="admin-stat-label">Unassigned Users</div>
+          </div>
+          <div className="admin-stat" style={{ cursor: 'pointer' }} onClick={() => setViewMode('confirmed')}>
+            <div className="admin-stat-value" style={{ color: 'var(--success)' }}>{stats.confirmedMembers}</div>
+            <div className="admin-stat-label">Confirmed Members</div>
           </div>
           <div className="admin-stat" style={{ cursor: 'pointer' }} onClick={() => setViewMode('archives')}>
             <div className="admin-stat-value" style={{ color: 'var(--primary)' }}>{stats.archived}</div>
@@ -475,16 +507,22 @@ export default function AdminPortal() {
             Teams Dashboard
           </button>
           <button
-            className={`cyber-tab-premium ${viewMode === 'users' ? 'active' : ''}`}
-            onClick={() => setViewMode('users')}
+            className={`cyber-tab-premium ${viewMode === 'unassigned' ? 'active' : ''}`}
+            onClick={() => { setViewMode('unassigned'); setFilterUni(''); setFilterYear(''); setFilterLocation(''); }}
           >
-            User Registry
+            Unassigned Users
           </button>
           <button
-            className={`cyber-tab-premium ${viewMode === 'participating' ? 'active' : ''}`}
-            onClick={() => setViewMode('participating')}
+            className={`cyber-tab-premium ${viewMode === 'confirmed' ? 'active' : ''}`}
+            onClick={() => { setViewMode('confirmed'); setFilterUni(''); setFilterYear(''); setFilterLocation(''); }}
           >
-            Participating Users
+            Confirmed Participants
+          </button>
+          <button
+            className={`cyber-tab-premium ${viewMode === 'pending_members' ? 'active' : ''}`}
+            onClick={() => { setViewMode('pending_members'); setFilterUni(''); setFilterYear(''); setFilterLocation(''); }}
+          >
+            Pending/Draft Members
           </button>
           <button
             className={`cyber-tab-premium ${viewMode === 'archives' ? 'active' : ''}`}
@@ -494,7 +532,7 @@ export default function AdminPortal() {
           </button>
           
           {/* Download Button Logic */}
-          {(viewMode === 'users' || viewMode === 'participating' || (viewMode === 'teams' && filter === 'approved')) && (
+          {(viewMode === 'unassigned' || viewMode === 'confirmed' || viewMode === 'pending_members' || (viewMode === 'teams' && filter === 'approved')) && (
             <div className="export-container" ref={dropdownRef}>
               <button
                 className="cyber-btn-premium"
@@ -538,18 +576,20 @@ export default function AdminPortal() {
         )}
 
         {/* Search & Filters for Users (Solo and Participating) */}
-        {(viewMode === 'users' || viewMode === 'participating') && (
+        {(viewMode === 'unassigned' || viewMode === 'confirmed' || viewMode === 'pending_members') && (
           <div className="admin-dash-card" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
                {/* Contextual Search */}
                <div className="form-group" style={{ marginBottom: 0 }}>
-                 <label className="form-label" style={{ fontSize: '0.65rem' }}>Search {viewMode === 'users' ? 'Registered' : 'Participating'} Users</label>
+                 <label className="form-label" style={{ fontSize: '0.65rem' }}>
+                   Search {viewMode === 'unassigned' ? 'Unassigned' : viewMode === 'confirmed' ? 'Confirmed' : 'Pending/Draft'} Users
+                 </label>
                  <input 
                    type="text" 
                    className="cyber-input-premium" 
-                   placeholder={viewMode === 'users' ? "Name or Email..." : "Name, Email or Team Name..."}
-                   value={viewMode === 'users' ? userSearchTerm : participatingSearchTerm}
-                   onChange={(e) => viewMode === 'users' ? setUserSearchTerm(e.target.value) : setParticipatingSearchTerm(e.target.value)}
+                   placeholder={viewMode === 'unassigned' ? "Name or Email..." : "Name, Email or Team Name..."}
+                   value={viewMode === 'unassigned' ? userSearchTerm : participatingSearchTerm}
+                   onChange={(e) => viewMode === 'unassigned' ? setUserSearchTerm(e.target.value) : setParticipatingSearchTerm(e.target.value)}
                  />
                </div>
 
@@ -713,9 +753,9 @@ export default function AdminPortal() {
                       </div>
                     </div>
                     <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.65rem', color: 'var(--text-secondary)', textAlign: 'right' }}>
-                      <div>{member.email}</div>
+                      <div style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{member.email}</div>
                       <div>{member.mobile}</div>
-                      <div>{member.course}</div>
+                      <div>{member.gender || 'N/A'} • {member.course}</div>
                       <div>{member.university}</div>
                       <div>{member.state}, {member.district}</div>
                     </div>
@@ -726,19 +766,19 @@ export default function AdminPortal() {
           </div>
         ))}
 
-        {/* Solo Users View */}
-        {viewMode === 'users' && (
+        {/* Unassigned Users View */}
+        {viewMode === 'unassigned' && (
           <>
             <div className="admin-dash-card" style={{ marginBottom: '1.5rem', padding: '1rem', borderLeft: '4px solid var(--accent)' }}>
                <p style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', letterSpacing: '0.5px' }}>
-                 ℹ️ This is the list of users who registered in the website but didn't create any team nor joined any team.
+                 ℹ️ This is the list of users who registered but haven't created or joined any team.
                </p>
             </div>
-            {soloUsers.length === 0 ? (
-              <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No unaffiliated users found.</div>
+            {unassignedUsers.length === 0 ? (
+              <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No unassigned users found.</div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 350px), 1fr))', gap: '1.5rem' }}>
-                {soloUsers.map((u) => (
+                {unassignedUsers.map((u) => (
                   <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,255,100,0.02)', padding: '1.5rem', maxWidth: '100%' }}>
                     <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
                       <div className="member-avatar" style={{ width: '50px', height: '50px', fontSize: '1.2rem' }}>
@@ -754,15 +794,18 @@ export default function AdminPortal() {
                         <span style={{ color: 'var(--text-secondary)' }}>Mobile:</span><br /> {u.mobile || 'N/A'}
                       </div>
                       <div>
-                        <span style={{ color: 'var(--text-secondary)' }}>Course:</span><br /> {u.course || 'N/A'}
+                        <span style={{ color: 'var(--text-secondary)' }}>Gender:</span><br /> {u.gender || 'N/A'}
                       </div>
-                      <div style={{ gridColumn: 'span 2' }}>
-                        <span style={{ color: 'var(--text-secondary)' }}>University Name:</span><br /> {u.university || 'N/A'}
+                      <div>
+                        <span style={{ color: 'var(--text-secondary)' }}>Course:</span><br /> {u.course || 'N/A'}
                       </div>
                       <div>
                         <span style={{ color: 'var(--text-secondary)' }}>Year of Study:</span><br /> {u.yearOfStudy || 'N/A'}
                       </div>
-                      <div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>University Name:</span><br /> {u.university || 'N/A'}
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
                         <span style={{ color: 'var(--text-secondary)' }}>Location:</span><br /> {u.district}, {u.state}
                       </div>
                     </div>
@@ -773,25 +816,39 @@ export default function AdminPortal() {
           </>
         )}
 
-        {/* Participating Users View */}
-        {viewMode === 'participating' && (
-          participatingUsers.length === 0 ? (
-            <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No participating users found.</div>
+        {/* Confirmed Participants & Pending Members View */}
+        {(viewMode === 'confirmed' || viewMode === 'pending_members') && (
+          (viewMode === 'confirmed' ? confirmedUsers : pendingMembers).length === 0 ? (
+            <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No {viewMode === 'confirmed' ? 'confirmed' : 'pending/draft'} members found matching your filters.</div>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 400px), 1fr))', gap: '1.5rem' }}>
-              {participatingUsers.map((u) => (
-                <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,229,255,0.02)', padding: '1.5rem', maxWidth: '100%' }}>
+              {(viewMode === 'confirmed' ? confirmedUsers : pendingMembers).map((u) => (
+                <div key={u.uid} className="admin-team-detail" style={{ 
+                  background: viewMode === 'confirmed' ? 'rgba(0,255,100,0.02)' : 'rgba(255,150,0,0.02)', 
+                  borderLeft: `4px solid ${viewMode === 'confirmed' ? 'var(--success)' : 'var(--warning)'}`,
+                  padding: '1.5rem', 
+                  maxWidth: '100%' 
+                }}>
                   <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <div className="member-avatar" style={{ width: '50px', height: '50px', fontSize: '1.2rem', borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                    <div className="member-avatar" style={{ 
+                      width: '50px', 
+                      height: '50px', 
+                      fontSize: '1.2rem', 
+                      borderColor: viewMode === 'confirmed' ? 'var(--success)' : 'var(--warning)', 
+                      color: viewMode === 'confirmed' ? 'var(--success)' : 'var(--warning)' 
+                    }}>
                       {u.name?.charAt(0)?.toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
                       <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                         {u.name} {u.uid === u.teamLeaderId && (
-                          <span style={{ fontSize: '0.65rem', background: 'var(--accent)', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                          <span style={{ fontSize: '0.65rem', background: viewMode === 'confirmed' ? 'var(--success)' : 'var(--warning)', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
                             (LEADER)
                           </span>
                         )}
+                        <span style={{ marginLeft: 'auto', fontSize: '0.6rem', color: viewMode === 'confirmed' ? 'var(--success)' : 'var(--warning)', padding: '2px 8px', border: `1px solid ${viewMode === 'confirmed' ? 'var(--success)' : 'var(--warning)'}`, borderRadius: '20px' }}>
+                          {u.teamStatus?.toUpperCase()}
+                        </span>
                       </h3>
                       <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{u.email} • {u.mobile || 'N/A'}</p>
                     </div>
@@ -803,7 +860,7 @@ export default function AdminPortal() {
                         <span style={{ color: 'rgba(0,229,255,0.5)' }}>TEAM NAME:</span><br /> {u.teamName}
                       </div>
                       <div>
-                        <span style={{ color: 'rgba(0,229,255,0.5)' }}>UNIQUE TEAM ID:</span><br /> <span style={{ fontSize: '0.65rem' }}>{u.teamId}</span>
+                        <span style={{ color: 'rgba(0,229,255,0.5)' }}>STATUS:</span><br /> <span style={{ color: u.teamStatus === 'approved' ? 'var(--success)' : 'var(--warning)' }}>{u.teamStatus?.toUpperCase()}</span>
                       </div>
                       <div style={{ gridColumn: 'span 2' }}>
                         <span style={{ color: 'rgba(0,229,255,0.5)' }}>LEADER NAME:</span><br /> {u.teamLeaderName}
@@ -811,18 +868,21 @@ export default function AdminPortal() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
                     <div>
                       <span style={{ color: 'var(--text-secondary)' }}>Course:</span><br /> {u.course || 'N/A'}
                     </div>
                     <div>
-                      <span style={{ color: 'var(--text-secondary)' }}>Year of Study:</span><br /> {u.yearOfStudy || 'N/A'}
+                      <span style={{ color: 'var(--text-secondary)' }}>Gender:</span><br /> {u.gender || 'N/A'}
                     </div>
-                    <div style={{ gridColumn: 'span 2' }}>
-                      <span style={{ color: 'var(--text-secondary)' }}>University Name:</span><br /> {u.university || 'N/A'}
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)' }}>Year of Study:</span><br /> {u.yearOfStudy || 'N/A'}
                     </div>
                     <div>
                       <span style={{ color: 'var(--text-secondary)' }}>Location:</span><br /> {u.district}, {u.state}
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>University Name:</span><br /> {u.university || 'N/A'}
                     </div>
                   </div>
                 </div>
@@ -840,7 +900,7 @@ export default function AdminPortal() {
               <div className="admin-team-detail" key={team.id} style={{ opacity: 0.85, borderLeft: '4px solid var(--text-secondary)' }}>
                 <div className="admin-team-header">
                   <div>
-                    <h3 className="admin-team-name">{team.teamName} <span style={{ fontSize: '0.7rem', color: 'var(--warning)', letterSpacing: '1px' }}>(VAULT RECORD)</span></h3>
+                    <h3 className="admin-team-name">{team.teamName}</h3>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
                       Archived on {new Date(team.archivedAt).toLocaleString()} • {team.archiveReason?.toUpperCase() || 'MANUAL ARCHIVE'}
                     </span>
@@ -858,32 +918,57 @@ export default function AdminPortal() {
                   <div style={{ animation: 'fadeInUp 0.3s ease', marginTop: '1.5rem' }}>
                     <div className="team-info-grid" style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '4px' }}>
                       <div className="team-info-item">
-                        <div className="team-info-label">Leader</div>
-                        <div className="team-info-value">{team.leaderName}</div>
+                        <div className="team-info-label">Archive Date</div>
+                        <div className="team-info-value">{new Date(team.archivedAt).toLocaleString()}</div>
                       </div>
                       <div className="team-info-item">
-                        <div className="team-info-label">Leader Email</div>
-                        <div className="team-info-value">{team.leaderEmail}</div>
+                        <div className="team-info-label">UTR Number</div>
+                        <div className="team-info-value" style={{ color: 'var(--accent)' }}>{team.utr}</div>
                       </div>
                       <div className="team-info-item">
-                        <div className="team-info-label">Rejection Reason</div>
+                        <div className="team-info-label">Transaction ID</div>
+                        <div className="team-info-value" style={{ color: 'var(--accent)' }}>{team.transactionId}</div>
+                      </div>
+                      <div className="team-info-item">
+                        <div className="team-info-label">Join Code</div>
+                        <div className="team-info-value">{team.joinCode || 'N/A'}</div>
+                      </div>
+                      <div className="team-info-item">
+                        <div className="team-info-label">Type & Amount</div>
+                        <div className="team-info-value">{team.type?.toUpperCase()} — ₹{team.amount}</div>
+                      </div>
+                      <div className="team-info-item" style={{ gridColumn: 'span 2' }}>
+                        <div className="team-info-label">Rejection/Archive Reason</div>
                         <div className="team-info-value" style={{ color: 'var(--danger)' }}>{team.rejectionReason || 'N/A'}</div>
-                      </div>
-                      <div className="team-info-item">
-                        <div className="team-info-label">Historical UTR</div>
-                        <div className="team-info-value">{team.utr}</div>
                       </div>
                     </div>
 
-                    <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '1rem 0', textTransform: 'uppercase' }}>
-                      Archive Roster ({team.members?.length || 0})
+                    <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '1.5rem 0 0.75rem 0', textTransform: 'uppercase', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '0.5rem' }}>
+                      Detailed Archive Roster ({team.members?.length || 0})
                     </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1rem' }}>
                       {team.members?.map((member, idx) => (
-                        <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px' }}>
-                          <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{member.name}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{member.email}</div>
-                          <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>{member.university}</div>
+                        <div key={idx} style={{ padding: '1rem', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.9rem', color: 'var(--primary)', marginBottom: '4px' }}>{member.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '8px' }}>{member.email} • {member.mobile}</div>
+                          
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.65rem' }}>
+                            <div>
+                              <span style={{ opacity: 0.5 }}>Gender:</span> {member.gender || 'N/A'}
+                            </div>
+                            <div>
+                              <span style={{ opacity: 0.5 }}>Year:</span> {member.yearOfStudy || 'N/A'}
+                            </div>
+                            <div style={{ gridColumn: 'span 2' }}>
+                              <span style={{ opacity: 0.5 }}>Course:</span> {member.course}
+                            </div>
+                            <div style={{ gridColumn: 'span 2' }}>
+                              <span style={{ opacity: 0.5 }}>University:</span> {member.university}
+                            </div>
+                            <div style={{ gridColumn: 'span 2' }}>
+                              <span style={{ opacity: 0.5 }}>Location:</span> {member.district}, {member.state}
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>

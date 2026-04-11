@@ -18,6 +18,7 @@ export default function Onboarding() {
     course: '',
     university: '',
     yearOfStudy: '',
+    gender: '',
     state: '',
     district: '',
   });
@@ -31,7 +32,7 @@ export default function Onboarding() {
     e.preventDefault();
     setError('');
 
-    if (!form.name || !form.mobile || !form.course || !form.university || !form.yearOfStudy || !form.state || !form.district) {
+    if (!form.name || !form.mobile || !form.course || !form.university || !form.yearOfStudy || !form.gender || !form.state || !form.district) {
       setError('All fields are required');
       return;
     }
@@ -87,7 +88,7 @@ export default function Onboarding() {
             <input type="tel" name="mobile" className="form-input" placeholder="9876543210" value={form.mobile} onChange={handleChange} required />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Course</label>
               <input type="text" name="course" className="form-input" placeholder="B.Tech, BCA, MCA..." value={form.course} onChange={handleChange} required />
@@ -95,6 +96,15 @@ export default function Onboarding() {
             <div className="form-group">
               <label className="form-label">Year of Study</label>
               <input type="text" name="yearOfStudy" className="form-input" placeholder="1st, 2nd, 3rd, 4th..." value={form.yearOfStudy} onChange={handleChange} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Gender</label>
+              <select name="gender" className="form-input" value={form.gender} onChange={handleChange} required style={{ appearance: 'auto' }}>
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
             </div>
           </div>
 
