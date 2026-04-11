@@ -47,7 +47,7 @@ export default function NotificationCenter() {
   const toggleDropdown = async () => {
     const nextState = !isOpen;
     setIsOpen(nextState);
-    
+
     // If opening, mark all unread as read
     if (nextState) {
       const unread = notifications.filter(n => !n.read);
@@ -69,8 +69,8 @@ export default function NotificationCenter() {
 
   return (
     <div className="notification-center" ref={dropdownRef}>
-      <button 
-        className="notification-trigger" 
+      <button
+        className="notification-trigger"
         onClick={toggleDropdown}
         title="Notifications"
       >
@@ -83,7 +83,7 @@ export default function NotificationCenter() {
           <div className="notification-header">
             <h3>Notifications</h3>
           </div>
-          
+
           <div className="notification-list">
             {notifications.length === 0 ? (
               <div className="notification-empty">No new notifications</div>
@@ -103,7 +103,7 @@ export default function NotificationCenter() {
                       For any query reach out at <span style={{ color: 'var(--primary)' }}>support@codeshastra.tech</span>
                     </div>
                   </div>
-                  
+
                   <div className="notification-details">
                     <div className="detail-row"><span>Submitted:</span> {new Date(n.submissionDate).toLocaleString()}</div>
                     <div className="detail-row"><span>{n.type === 'team_deleted' ? 'Deleted' : 'Rejected'}:</span> {new Date(n.rejectionDate).toLocaleString()}</div>

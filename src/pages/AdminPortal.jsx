@@ -7,17 +7,45 @@ import GlitchText from '../components/GlitchText';
 import { useAuth } from '../lib/AuthContext';
 
 export default function AdminPortal() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [teams, setTeams] = useState([]);
+  const [archivedTeams, setArchivedTeams] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [viewMode, setViewMode] = useState('teams'); // 'teams', 'users', 'archives'
   const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [teamMembers, setTeamMembers] = useState({});
   const [rejectingTeam, setRejectingTeam] = useState(null);
   const [rejectionMessage, setRejectionMessage] = useState('');
+
+  const fetchArchives = useCallback(async () => {
+    try {
+      const archiveSnap = await getDocs(collection(db, 'team_archives'));
+      const archiveData = [];
+      archiveSnap.forEach(doc => archiveData.push({ id: doc.id, ...doc.data() }));
+      archiveData.sort((a, b) => new Date(b.archivedAt) - new Date(a.archivedAt));
+      setArchivedTeams(archiveData);
+    } catch (err) {
+      console.error('Failed to fetch archives:', err);
+    }
+  }, []);
+
+  const fetchAllUsers = useCallback(async () => {
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const usersData = [];
+      usersSnap.forEach(doc => usersData.push({ id: doc.id, ...doc.data() }));
+      setAllUsers(usersData);
+    } catch (err) {
+      console.error('Failed to fetch all users:', err);
+    }
+  }, []);
 
   const fetchTeams = useCallback(async () => {
     setLoading(true);
@@ -44,11 +72,13 @@ export default function AdminPortal() {
         }
       }
       setTeamMembers(membersMap);
+      await fetchArchives();
+      await fetchAllUsers();
     } catch (err) {
-      console.error('Failed to fetch teams:', err);
+      console.error('Failed to fetch data:', err);
     }
     setLoading(false);
-  }, []);
+  }, [fetchArchives, fetchAllUsers]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -111,9 +141,9 @@ export default function AdminPortal() {
       // Notify each member and clear their teamId
       const batch = writeBatch(db);
       const members = teamMembers[rejectingTeam] || [];
-      const fullMemberDetails = members.map(m => ({ 
-        uid: m.uid, 
-        name: m.name, 
+      const fullMemberDetails = members.map(m => ({
+        uid: m.uid,
+        name: m.name,
         email: m.email,
         mobile: m.mobile,
         university: m.university,
@@ -160,7 +190,7 @@ export default function AdminPortal() {
       setTeams(teams.filter(t => t.id !== rejectingTeam));
       setRejectingTeam(null);
       setRejectionMessage('');
-      
+
       await fetchTeams();
     } catch (err) {
       alert('Failed to reject: ' + err.message);
@@ -169,15 +199,28 @@ export default function AdminPortal() {
   };
 
   const filteredTeams = teams.filter(t => {
+    const search = searchTerm.toLowerCase();
+    const matchesSearch = t.teamName.toLowerCase().includes(search) || 
+                          t.leaderEmail.toLowerCase().includes(search);
+    if (!matchesSearch) return false;
     if (filter === 'all') return true;
     return t.status === filter;
+  });
+
+  const soloUsers = allUsers.filter(u => !u.teamId && u.uid !== user?.uid);
+
+  const filteredArchives = archivedTeams.filter(t => {
+    const search = archiveSearchTerm.toLowerCase();
+    return t.teamName.toLowerCase().includes(search) || 
+           t.leaderEmail.toLowerCase().includes(search);
   });
 
   const stats = {
     total: teams.length,
     pending: teams.filter(t => t.status === 'pending').length,
     approved: teams.filter(t => t.status === 'approved').length,
-    rejected: teams.filter(t => t.status === 'rejected').length,
+    solo: soloUsers.length,
+    archived: archivedTeams.length
   };
 
   // Login screen
@@ -225,43 +268,103 @@ export default function AdminPortal() {
         <div className="admin-stats">
           <div className="admin-stat">
             <div className="admin-stat-value">{stats.total}</div>
-            <div className="admin-stat-label">Total</div>
+            <div className="admin-stat-label">Total Teams</div>
           </div>
           <div className="admin-stat">
             <div className="admin-stat-value" style={{ color: 'var(--warning)' }}>{stats.pending}</div>
-            <div className="admin-stat-label">Pending</div>
+            <div className="admin-stat-label">Pending Approval</div>
           </div>
-          <div className="admin-stat">
-            <div className="admin-stat-value" style={{ color: 'var(--success)' }}>{stats.approved}</div>
-            <div className="admin-stat-label">Approved</div>
+          <div className="admin-stat" style={{ cursor: 'pointer' }} onClick={() => setViewMode('users')}>
+            <div className="admin-stat-value" style={{ color: 'var(--accent)' }}>{stats.solo}</div>
+            <div className="admin-stat-label">Solo Users</div>
           </div>
-          <div className="admin-stat">
-            <div className="admin-stat-value" style={{ color: 'var(--danger)' }}>{stats.rejected}</div>
-            <div className="admin-stat-label">Rejected</div>
+          <div className="admin-stat" style={{ cursor: 'pointer' }} onClick={() => setViewMode('archives')}>
+            <div className="admin-stat-value" style={{ color: 'var(--primary)' }}>{stats.archived}</div>
+            <div className="admin-stat-label">Archives</div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button className="btn" onClick={fetchTeams}>↻ Refresh</button>
-          <button className="btn btn-danger" onClick={() => { auth.signOut(); setIsAuthenticated(false); }}>
-            Logout
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+          <button className="cyber-btn-premium" onClick={fetchTeams}>
+            <span style={{ marginRight: '5px' }}>↻</span> REFRESH
+          </button>
+          <button className="cyber-btn-premium" style={{ borderColor: 'var(--danger)', color: 'var(--danger)' }} onClick={logout}>
+            LOGOUT
           </button>
         </div>
       </div>
 
-      <div className="admin-content">
-        {/* Filter buttons */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-          {['all', 'pending', 'waiting_members', 'approved', 'rejected'].map(f => (
-            <button
-              key={f}
-              className={`btn ${filter === f ? 'btn-primary' : ''}`}
-              style={{ fontSize: '0.7rem', padding: '0.4rem 1rem' }}
-              onClick={() => setFilter(f)}
-            >
-              {f.replace('_', ' ')}
-            </button>
-          ))}
+      <div className="admin-content" style={{ padding: '0 2rem 2rem 2rem' }}>
+        {/* View Mode Switcher */}
+        <div className="admin-dash-card" style={{ 
+          display: 'flex', 
+          gap: '1rem', 
+          marginBottom: '2rem',
+          flexWrap: 'wrap'
+        }}>
+          <button 
+            className={`cyber-tab-premium ${viewMode === 'teams' ? 'active' : ''}`}
+            onClick={() => setViewMode('teams')}
+          >
+            Teams Dashboard
+          </button>
+          <button 
+            className={`cyber-tab-premium ${viewMode === 'users' ? 'active' : ''}`}
+            onClick={() => setViewMode('users')}
+          >
+            User Registry
+          </button>
+          <button 
+            className={`cyber-tab-premium ${viewMode === 'archives' ? 'active' : ''}`}
+            onClick={() => setViewMode('archives')}
+          >
+            Archive Vault
+          </button>
         </div>
+
+        {/* Local Filter for Teams */}
+        {viewMode === 'teams' && (
+          <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '2rem', flexWrap: 'wrap', paddingLeft: '0.5rem' }}>
+            {['all', 'pending', 'waiting_members', 'approved'].map(f => (
+              <button
+                key={f}
+                className={`cyber-btn-premium ${filter === f ? 'active' : ''}`}
+                onClick={() => setFilter(f)}
+              >
+                {f.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Search for Archives */}
+        {viewMode === 'archives' && (
+          <div className="admin-dash-card" style={{ marginBottom: '2rem', display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+             <div style={{ fontSize: '0.75rem', color: 'var(--primary)', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+               Vault Search:
+             </div>
+             <input 
+               type="text" 
+               placeholder="Enter Team Name or Leader Email..."
+               className="cyber-input-premium"
+               style={{ flex: 1, maxWidth: '500px' }}
+               value={archiveSearchTerm}
+               onChange={(e) => setArchiveSearchTerm(e.target.value)}
+             />
+          </div>
+        )}
+
+        {/* Search for Teams */}
+        {viewMode === 'teams' && (
+          <div style={{ marginBottom: '2.5rem', maxWidth: '500px', paddingLeft: '0.5rem' }}>
+            <input 
+              type="text" 
+              placeholder="Search active teams or leaders..."
+              className="cyber-input-premium"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        )}
 
         {loading && (
           <div className="loading-container" style={{ minHeight: '200px' }}>
@@ -271,8 +374,8 @@ export default function AdminPortal() {
         )}
 
 
-        {/* Team cards */}
-        {filteredTeams.map((team) => (
+        {/* Teams Dashboard View */}
+        {viewMode === 'teams' && filteredTeams.map((team) => (
           <div className="admin-team-detail" key={team.id}>
             <div className="admin-team-header">
               <div>
@@ -287,13 +390,13 @@ export default function AdminPortal() {
                 </span>
                 <div className="admin-actions">
                   {team.status === 'pending' && (
-                    <button className="btn btn-primary" style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem' }}
+                    <button className="cyber-btn-premium" style={{ fontSize: '0.65rem', padding: '0.3rem 0.6rem' }}
                       onClick={() => handleApprove(team.id)}>
                       ✓ Approve
                     </button>
                   )}
                   {(team.status === 'pending' || team.status === 'approved') && (
-                    <button className="btn btn-danger" style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem' }}
+                    <button className="cyber-btn-premium" style={{ fontSize: '0.65rem', padding: '0.3rem 0.6rem', borderColor: 'var(--danger)', color: 'var(--danger)', marginLeft: '5px' }}
                       onClick={() => handleRejectStart(team.id)}>
                       ✗ Reject
                     </button>
@@ -302,22 +405,10 @@ export default function AdminPortal() {
               </div>
             </div>
 
-            {/* Show rejection message if exists */}
-            {team.status === 'rejected' && team.rejectionMessage && (
-              <div style={{
-                margin: '0.5rem 0 1rem', padding: '0.75rem 1rem',
-                background: 'rgba(255, 0, 64, 0.05)', border: '1px solid rgba(255, 0, 64, 0.2)',
-                borderRadius: '4px', fontFamily: 'var(--font-mono)', fontSize: '0.75rem'
-              }}>
-                <span style={{ color: 'var(--danger)' }}>Rejection reason:</span>{' '}
-                <span style={{ color: 'var(--text-secondary)' }}>{team.rejectionMessage}</span>
-              </div>
-            )}
-
             {/* Team details toggle */}
             <button
-              className="btn"
-              style={{ fontSize: '0.7rem', padding: '0.3rem 1rem', marginBottom: '1rem' }}
+              className="cyber-btn-premium"
+              style={{ fontSize: '0.65rem', padding: '0.2rem 0.75rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.02)' }}
               onClick={() => setExpandedTeam(expandedTeam === team.id ? null : team.id)}
             >
               {expandedTeam === team.id ? '▾ Hide Details' : '▸ Show Details'}
@@ -378,6 +469,106 @@ export default function AdminPortal() {
             )}
           </div>
         ))}
+
+        {/* Solo Users View */}
+        {viewMode === 'users' && (
+          soloUsers.length === 0 ? (
+            <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No unaffiliated users found.</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+              {soloUsers.map((u) => (
+                <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,255,100,0.02)', padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div className="member-avatar" style={{ width: '50px', height: '50px', fontSize: '1.2rem' }}>
+                      {u.name?.charAt(0)?.toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                       <h3 style={{ fontSize: '1rem', color: 'var(--primary)' }}>{u.name}</h3>
+                       <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{u.email}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+                     <div>
+                       <span style={{ color: 'var(--text-secondary)' }}>Mobile:</span><br/> {u.mobile || 'N/A'}
+                     </div>
+                     <div>
+                       <span style={{ color: 'var(--text-secondary)' }}>Course:</span><br/> {u.course || 'N/A'}
+                     </div>
+                     <div style={{ gridColumn: 'span 2' }}>
+                       <span style={{ color: 'var(--text-secondary)' }}>University:</span><br/> {u.university || 'N/A'}
+                     </div>
+                     <div>
+                       <span style={{ color: 'var(--text-secondary)' }}>Location:</span><br/> {u.district}, {u.state}
+                     </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+
+        {/* Archive Vault View */}
+        {viewMode === 'archives' && (
+          filteredArchives.length === 0 ? (
+            <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No archived records found matching your search.</div>
+          ) : (
+            filteredArchives.map((team) => (
+              <div className="admin-team-detail" key={team.id} style={{ opacity: 0.85, borderLeft: '4px solid var(--text-secondary)' }}>
+                <div className="admin-team-header">
+                  <div>
+                    <h3 className="admin-team-name">{team.teamName} <span style={{ fontSize: '0.7rem', color: 'var(--warning)', letterSpacing: '1px' }}>(VAULT RECORD)</span></h3>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
+                      Archived on {new Date(team.archivedAt).toLocaleString()} • {team.archiveReason?.toUpperCase() || 'MANUAL ARCHIVE'}
+                    </span>
+                  </div>
+                  <button
+                    className="cyber-btn-premium"
+                    style={{ fontSize: '0.65rem', padding: '0.3rem 0.8rem' }}
+                    onClick={() => setExpandedTeam(expandedTeam === team.id ? null : team.id)}
+                  >
+                    {expandedTeam === team.id ? 'Hide Record' : 'View Audit Details'}
+                  </button>
+                </div>
+
+                {expandedTeam === team.id && (
+                  <div style={{ animation: 'fadeInUp 0.3s ease', marginTop: '1.5rem' }}>
+                    <div className="team-info-grid" style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '4px' }}>
+                      <div className="team-info-item">
+                        <div className="team-info-label">Leader</div>
+                        <div className="team-info-value">{team.leaderName}</div>
+                      </div>
+                      <div className="team-info-item">
+                        <div className="team-info-label">Leader Email</div>
+                        <div className="team-info-value">{team.leaderEmail}</div>
+                      </div>
+                      <div className="team-info-item">
+                        <div className="team-info-label">Rejection Reason</div>
+                        <div className="team-info-value" style={{ color: 'var(--danger)' }}>{team.rejectionReason || 'N/A'}</div>
+                      </div>
+                      <div className="team-info-item">
+                        <div className="team-info-label">Historical UTR</div>
+                        <div className="team-info-value">{team.utr}</div>
+                      </div>
+                    </div>
+
+                    <h4 style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '1rem 0', textTransform: 'uppercase' }}>
+                      Archive Roster ({team.members?.length || 0})
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                      {team.members?.map((member, idx) => (
+                        <div key={idx} style={{ padding: '0.75rem', background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '4px' }}>
+                          <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{member.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>{member.email}</div>
+                          <div style={{ fontSize: '0.7rem', opacity: 0.6 }}>{member.university}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))
+          )
+        )}
 
         {filteredTeams.length === 0 && !loading && (
           <div style={{ textAlign: 'center', padding: '3rem', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
