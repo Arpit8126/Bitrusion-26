@@ -15,10 +15,18 @@ export default function AdminPortal() {
   const [teams, setTeams] = useState([]);
   const [archivedTeams, setArchivedTeams] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
-  const [viewMode, setViewMode] = useState('teams'); // 'teams', 'users', 'archives'
+  const [viewMode, setViewMode] = useState('teams'); // 'teams', 'users', 'participating', 'archives'
   const [filter, setFilter] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [archiveSearchTerm, setArchiveSearchTerm] = useState('');
+  
+  // New Search & Filter States for Users
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [participatingSearchTerm, setParticipatingSearchTerm] = useState('');
+  const [filterUni, setFilterUni] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+  const [filterLocation, setFilterLocation] = useState('');
+  
   const [expandedTeam, setExpandedTeam] = useState(null);
   const [teamMembers, setTeamMembers] = useState({});
   const [rejectingTeam, setRejectingTeam] = useState(null);
@@ -200,19 +208,56 @@ export default function AdminPortal() {
 
   const filteredTeams = teams.filter(t => {
     const search = searchTerm.toLowerCase();
-    const matchesSearch = t.teamName.toLowerCase().includes(search) || 
-                          t.leaderEmail.toLowerCase().includes(search);
+    const matchesSearch = t.teamName.toLowerCase().includes(search) ||
+      t.leaderEmail.toLowerCase().includes(search);
     if (!matchesSearch) return false;
     if (filter === 'all') return true;
     return t.status === filter;
   });
 
-  const soloUsers = allUsers.filter(u => !u.teamId && u.uid !== user?.uid);
+  const soloUsers = allUsers.filter(u => !u.teamId && u.uid !== user?.uid).filter(u => {
+    const search = userSearchTerm.toLowerCase();
+    const uni = filterUni.toLowerCase();
+    const year = filterYear.toLowerCase();
+    const loc = filterLocation.toLowerCase();
+
+    const matchesSearch = u.name?.toLowerCase().includes(search) || u.email?.toLowerCase().includes(search);
+    const matchesUni = !uni || u.university?.toLowerCase().includes(uni);
+    const matchesYear = !year || u.yearOfStudy?.toLowerCase().includes(year);
+    const matchesLoc = !loc || u.district?.toLowerCase().includes(loc) || u.state?.toLowerCase().includes(loc);
+
+    return matchesSearch && matchesUni && matchesYear && matchesLoc;
+  });
+
+  const participatingUsers = allUsers.filter(u => u.teamId && u.uid !== user?.uid).map(u => {
+    const team = teams.find(t => t.id === u.teamId);
+    return {
+      ...u,
+      teamName: team?.teamName || 'N/A',
+      teamLeaderId: team?.leaderId || 'N/A',
+      teamLeaderName: team?.leaderName || 'N/A'
+    };
+  }).filter(u => {
+    const search = participatingSearchTerm.toLowerCase();
+    const uni = filterUni.toLowerCase();
+    const year = filterYear.toLowerCase();
+    const loc = filterLocation.toLowerCase();
+
+    const matchesSearch = u.name?.toLowerCase().includes(search) || 
+                          u.email?.toLowerCase().includes(search) || 
+                          u.teamName?.toLowerCase().includes(search);
+                          
+    const matchesUni = !uni || u.university?.toLowerCase().includes(uni);
+    const matchesYear = !year || u.yearOfStudy?.toLowerCase().includes(year);
+    const matchesLoc = !loc || u.district?.toLowerCase().includes(loc) || u.state?.toLowerCase().includes(loc);
+
+    return matchesSearch && matchesUni && matchesYear && matchesLoc;
+  });
 
   const filteredArchives = archivedTeams.filter(t => {
     const search = archiveSearchTerm.toLowerCase();
-    return t.teamName.toLowerCase().includes(search) || 
-           t.leaderEmail.toLowerCase().includes(search);
+    return t.teamName.toLowerCase().includes(search) ||
+      t.leaderEmail.toLowerCase().includes(search);
   });
 
   const stats = {
@@ -295,25 +340,31 @@ export default function AdminPortal() {
 
       <div className="admin-content" style={{ padding: '0 2rem 2rem 2rem' }}>
         {/* View Mode Switcher */}
-        <div className="admin-dash-card" style={{ 
-          display: 'flex', 
-          gap: '1rem', 
+        <div className="admin-dash-card" style={{
+          display: 'flex',
+          gap: '1rem',
           marginBottom: '2rem',
           flexWrap: 'wrap'
         }}>
-          <button 
+          <button
             className={`cyber-tab-premium ${viewMode === 'teams' ? 'active' : ''}`}
             onClick={() => setViewMode('teams')}
           >
             Teams Dashboard
           </button>
-          <button 
+          <button
             className={`cyber-tab-premium ${viewMode === 'users' ? 'active' : ''}`}
             onClick={() => setViewMode('users')}
           >
             User Registry
           </button>
-          <button 
+          <button
+            className={`cyber-tab-premium ${viewMode === 'participating' ? 'active' : ''}`}
+            onClick={() => setViewMode('participating')}
+          >
+            Participating Users
+          </button>
+          <button
             className={`cyber-tab-premium ${viewMode === 'archives' ? 'active' : ''}`}
             onClick={() => setViewMode('archives')}
           >
@@ -336,28 +387,83 @@ export default function AdminPortal() {
           </div>
         )}
 
+        {/* Search & Filters for Users (Solo and Participating) */}
+        {(viewMode === 'users' || viewMode === 'participating') && (
+          <div className="admin-dash-card" style={{ marginBottom: '2rem', padding: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+               {/* Contextual Search */}
+               <div className="form-group" style={{ marginBottom: 0 }}>
+                 <label className="form-label" style={{ fontSize: '0.65rem' }}>Search {viewMode === 'users' ? 'Registered' : 'Participating'} Users</label>
+                 <input 
+                   type="text" 
+                   className="cyber-input-premium" 
+                   placeholder={viewMode === 'users' ? "Name or Email..." : "Name, Email or Team Name..."}
+                   value={viewMode === 'users' ? userSearchTerm : participatingSearchTerm}
+                   onChange={(e) => viewMode === 'users' ? setUserSearchTerm(e.target.value) : setParticipatingSearchTerm(e.target.value)}
+                 />
+               </div>
+
+               {/* University Filter */}
+               <div className="form-group" style={{ marginBottom: 0 }}>
+                 <label className="form-label" style={{ fontSize: '0.65rem' }}>Filter by University Name</label>
+                 <input 
+                   type="text" 
+                   className="cyber-input-premium" 
+                   placeholder="Institution..."
+                   value={filterUni}
+                   onChange={(e) => setFilterUni(e.target.value)}
+                 />
+               </div>
+
+               {/* Year Filter */}
+               <div className="form-group" style={{ marginBottom: 0 }}>
+                 <label className="form-label" style={{ fontSize: '0.65rem' }}>Filter by Year</label>
+                 <input 
+                   type="text" 
+                   className="cyber-input-premium" 
+                   placeholder="1st, 2nd, etc..."
+                   value={filterYear}
+                   onChange={(e) => setFilterYear(e.target.value)}
+                 />
+               </div>
+
+               {/* Location Filter */}
+               <div className="form-group" style={{ marginBottom: 0 }}>
+                 <label className="form-label" style={{ fontSize: '0.65rem' }}>Filter by Location</label>
+                 <input 
+                   type="text" 
+                   className="cyber-input-premium" 
+                   placeholder="District or State..."
+                   value={filterLocation}
+                   onChange={(e) => setFilterLocation(e.target.value)}
+                 />
+               </div>
+            </div>
+          </div>
+        )}
+
         {/* Search for Archives */}
         {viewMode === 'archives' && (
           <div className="admin-dash-card" style={{ marginBottom: '2rem', display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-             <div style={{ fontSize: '0.75rem', color: 'var(--primary)', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
-               Vault Search:
-             </div>
-             <input 
-               type="text" 
-               placeholder="Enter Team Name or Leader Email..."
-               className="cyber-input-premium"
-               style={{ flex: 1, maxWidth: '500px' }}
-               value={archiveSearchTerm}
-               onChange={(e) => setArchiveSearchTerm(e.target.value)}
-             />
+            <div style={{ fontSize: '0.75rem', color: 'var(--primary)', letterSpacing: '2px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+              Vault Search:
+            </div>
+            <input
+              type="text"
+              placeholder="Enter Team Name or Leader Email..."
+              className="cyber-input-premium"
+              style={{ flex: 1, maxWidth: '500px' }}
+              value={archiveSearchTerm}
+              onChange={(e) => setArchiveSearchTerm(e.target.value)}
+            />
           </div>
         )}
 
         {/* Search for Teams */}
         {viewMode === 'teams' && (
           <div style={{ marginBottom: '2.5rem', maxWidth: '500px', paddingLeft: '0.5rem' }}>
-            <input 
-              type="text" 
+            <input
+              type="text"
               placeholder="Search active teams or leaders..."
               className="cyber-input-premium"
               value={searchTerm}
@@ -472,34 +578,102 @@ export default function AdminPortal() {
 
         {/* Solo Users View */}
         {viewMode === 'users' && (
-          soloUsers.length === 0 ? (
-            <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No unaffiliated users found.</div>
+          <>
+            <div className="admin-dash-card" style={{ marginBottom: '1.5rem', padding: '1rem', borderLeft: '4px solid var(--accent)' }}>
+               <p style={{ color: 'var(--accent)', fontFamily: 'var(--font-mono)', fontSize: '0.8rem', letterSpacing: '0.5px' }}>
+                 ℹ️ This is the list of users who registered in the website but didn't create any team nor joined any team.
+               </p>
+            </div>
+            {soloUsers.length === 0 ? (
+              <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No unaffiliated users found.</div>
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+                {soloUsers.map((u) => (
+                  <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,255,100,0.02)', padding: '1.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
+                      <div className="member-avatar" style={{ width: '50px', height: '50px', fontSize: '1.2rem' }}>
+                        {u.name?.charAt(0)?.toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <h3 style={{ fontSize: '1rem', color: 'var(--primary)', marginBottom: '4px' }}>{u.name}</h3>
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{u.email}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+                      <div>
+                        <span style={{ color: 'var(--text-secondary)' }}>Mobile:</span><br /> {u.mobile || 'N/A'}
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-secondary)' }}>Course:</span><br /> {u.course || 'N/A'}
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span style={{ color: 'var(--text-secondary)' }}>University Name:</span><br /> {u.university || 'N/A'}
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-secondary)' }}>Year of Study:</span><br /> {u.yearOfStudy || 'N/A'}
+                      </div>
+                      <div>
+                        <span style={{ color: 'var(--text-secondary)' }}>Location:</span><br /> {u.district}, {u.state}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Participating Users View */}
+        {viewMode === 'participating' && (
+          participatingUsers.length === 0 ? (
+            <div className="notification-empty" style={{ background: 'rgba(0,0,0,0.1)' }}>No participating users found.</div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
-              {soloUsers.map((u) => (
-                <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,255,100,0.02)', padding: '1.5rem' }}>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1rem' }}>
-                    <div className="member-avatar" style={{ width: '50px', height: '50px', fontSize: '1.2rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(400px, 1fr))', gap: '1.5rem' }}>
+              {participatingUsers.map((u) => (
+                <div key={u.uid} className="admin-team-detail" style={{ background: 'rgba(0,229,255,0.02)', padding: '1.5rem' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div className="member-avatar" style={{ width: '50px', height: '50px', fontSize: '1.2rem', borderColor: 'var(--accent)', color: 'var(--accent)' }}>
                       {u.name?.charAt(0)?.toUpperCase()}
                     </div>
                     <div style={{ flex: 1 }}>
-                       <h3 style={{ fontSize: '1rem', color: 'var(--primary)' }}>{u.name}</h3>
-                       <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{u.email}</p>
+                      <h3 style={{ fontSize: '1.1rem', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {u.name} {u.uid === u.teamLeaderId && (
+                          <span style={{ fontSize: '0.65rem', background: 'var(--accent)', color: '#000', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                            (LEADER)
+                          </span>
+                        )}
+                      </h3>
+                      <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{u.email} • {u.mobile || 'N/A'}</p>
                     </div>
                   </div>
+
+                  <div className="admin-dash-card" style={{ background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+                      <div>
+                        <span style={{ color: 'rgba(0,229,255,0.5)' }}>TEAM NAME:</span><br /> {u.teamName}
+                      </div>
+                      <div>
+                        <span style={{ color: 'rgba(0,229,255,0.5)' }}>UNIQUE TEAM ID:</span><br /> <span style={{ fontSize: '0.65rem' }}>{u.teamId}</span>
+                      </div>
+                      <div style={{ gridColumn: 'span 2' }}>
+                        <span style={{ color: 'rgba(0,229,255,0.5)' }}>LEADER NAME:</span><br /> {u.teamLeaderName}
+                      </div>
+                    </div>
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.75rem', fontFamily: 'var(--font-mono)' }}>
-                     <div>
-                       <span style={{ color: 'var(--text-secondary)' }}>Mobile:</span><br/> {u.mobile || 'N/A'}
-                     </div>
-                     <div>
-                       <span style={{ color: 'var(--text-secondary)' }}>Course:</span><br/> {u.course || 'N/A'}
-                     </div>
-                     <div style={{ gridColumn: 'span 2' }}>
-                       <span style={{ color: 'var(--text-secondary)' }}>University:</span><br/> {u.university || 'N/A'}
-                     </div>
-                     <div>
-                       <span style={{ color: 'var(--text-secondary)' }}>Location:</span><br/> {u.district}, {u.state}
-                     </div>
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)' }}>Course:</span><br /> {u.course || 'N/A'}
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)' }}>Year of Study:</span><br /> {u.yearOfStudy || 'N/A'}
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>University Name:</span><br /> {u.university || 'N/A'}
+                    </div>
+                    <div>
+                      <span style={{ color: 'var(--text-secondary)' }}>Location:</span><br /> {u.district}, {u.state}
+                    </div>
                   </div>
                 </div>
               ))}

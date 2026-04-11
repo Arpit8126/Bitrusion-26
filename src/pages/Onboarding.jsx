@@ -17,6 +17,7 @@ export default function Onboarding() {
     mobile: '',
     course: '',
     university: '',
+    yearOfStudy: '',
     state: '',
     district: '',
   });
@@ -30,7 +31,7 @@ export default function Onboarding() {
     e.preventDefault();
     setError('');
 
-    if (!form.name || !form.mobile || !form.course || !form.university || !form.state || !form.district) {
+    if (!form.name || !form.mobile || !form.course || !form.university || !form.yearOfStudy || !form.state || !form.district) {
       setError('All fields are required');
       return;
     }
@@ -86,13 +87,19 @@ export default function Onboarding() {
             <input type="tel" name="mobile" className="form-input" placeholder="9876543210" value={form.mobile} onChange={handleChange} required />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Course</label>
-            <input type="text" name="course" className="form-input" placeholder="B.Tech CSE, BCA, MCA..." value={form.course} onChange={handleChange} required />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="form-group">
+              <label className="form-label">Course</label>
+              <input type="text" name="course" className="form-input" placeholder="B.Tech, BCA, MCA..." value={form.course} onChange={handleChange} required />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Year of Study</label>
+              <input type="text" name="yearOfStudy" className="form-input" placeholder="1st, 2nd, 3rd, 4th..." value={form.yearOfStudy} onChange={handleChange} required />
+            </div>
           </div>
 
           <div className="form-group">
-            <label className="form-label">University / College</label>
+            <label className="form-label">University Name</label>
             <input type="text" name="university" className="form-input" placeholder="Your institution name" value={form.university} onChange={handleChange} required />
           </div>
 
