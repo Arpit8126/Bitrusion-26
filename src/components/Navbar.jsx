@@ -4,7 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 import NotificationCenter from './NotificationCenter';
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, isAdmin, logout } = useAuth();
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -53,9 +53,15 @@ export default function Navbar() {
           <div className="navbar-auth-btns mobile-auth">
             {user ? (
               <>
-                <Link to="/dashboard" onClick={closeMenu}>
-                  <button className="btn btn-block">Dashboard</button>
-                </Link>
+                {isAdmin ? (
+                  <Link to="/admin" onClick={closeMenu}>
+                    <button className="btn btn-block">Admin Panel</button>
+                  </Link>
+                ) : (
+                  <Link to="/dashboard" onClick={closeMenu}>
+                    <button className="btn btn-block">Dashboard</button>
+                  </Link>
+                )}
                 <button className="btn btn-danger btn-block" onClick={handleLogout}>
                   Logout
                 </button>
@@ -97,10 +103,18 @@ export default function Navbar() {
         <div className="navbar-auth-btns desktop-auth">
           {user ? (
             <>
-              <NotificationCenter />
-              <Link to="/dashboard">
-                <button className="btn">Dashboard</button>
-              </Link>
+              {isAdmin ? (
+                <Link to="/admin">
+                  <button className="btn">Admin Panel</button>
+                </Link>
+              ) : (
+                <>
+                  <NotificationCenter />
+                  <Link to="/dashboard">
+                    <button className="btn">Dashboard</button>
+                  </Link>
+                </>
+              )}
               <button className="btn btn-danger" onClick={handleLogout}>
                 Logout
               </button>
@@ -117,8 +131,8 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile notification icon - visible only when logged in and on mobile */}
-        {user && (
+        {/* Mobile notification icon - visible only when logged in as participant and on mobile */}
+        {user && !isAdmin && (
           <div className="mobile-notification-nav">
             <NotificationCenter />
           </div>

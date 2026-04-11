@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../lib/AuthContext';
 
 export default function ProtectedRoute({ children, requireProfile = true }) {
-  const { user, userProfile, loading } = useAuth();
+  const { user, userProfile, isAdmin, loading } = useAuth();
 
   if (loading) {
     return (
@@ -17,7 +17,8 @@ export default function ProtectedRoute({ children, requireProfile = true }) {
     return <Navigate to="/login" />;
   }
 
-  if (requireProfile && !userProfile) {
+  // Admins do not need a participant profile, so they bypass onboarding
+  if (requireProfile && !userProfile && !isAdmin) {
     return <Navigate to="/onboarding" />;
   }
 

@@ -37,6 +37,7 @@ function getCachedProfile() {
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchProfile = async (uid, retries = 3) => {
@@ -87,22 +88,37 @@ export function AuthProvider({ children }) {
       }
 
       if (firebaseUser) {
-        // Reactive profile listener
-        unsubscribeProfile = onSnapshot(doc(db, 'users', firebaseUser.uid), async (docSnapshot) => {
-          if (docSnapshot.exists()) {
-            const data = docSnapshot.data();
-            setUserProfile(data);
-            cacheProfile(data);
+        // 1. Check if user is an Admin
+        const adminRef = doc(db, 'admins', firebaseUser.uid);
+        getDoc(adminRef).then((adminSnap) => {
+          if (adminSnap.exists()) {
+            setIsAdmin(true);
+            setLoading(false);
           } else {
-            setUserProfile(null);
-            cacheProfile(null);
+            setIsAdmin(false);
+            // 2. If not admin, proceed with regular profile reactive listener
+            unsubscribeProfile = onSnapshot(doc(db, 'users', firebaseUser.uid), (docSnapshot) => {
+              if (docSnapshot.exists()) {
+                const data = docSnapshot.data();
+                setUserProfile(data);
+                cacheProfile(data);
+              } else {
+                setUserProfile(null);
+                cacheProfile(null);
+              }
+              setLoading(false);
+            }, (err) => {
+              console.warn('Profile listener error:', err);
+              setLoading(false);
+            });
           }
-          setLoading(false);
-        }, (err) => {
-          console.warn('Profile listener error:', err);
+        }).catch(err => {
+          console.error("Admin check failed:", err);
+          setIsAdmin(false);
           setLoading(false);
         });
       } else {
+        setIsAdmin(false);
         setUserProfile(null);
         cacheProfile(null);
         setLoading(false);
@@ -154,6 +170,7 @@ export function AuthProvider({ children }) {
   const value = {
     user,
     userProfile,
+    isAdmin,
     loading,
     signup,
     login,

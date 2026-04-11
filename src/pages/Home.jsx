@@ -59,7 +59,7 @@ function CountUp({ target, duration = 2000 }) {
 }
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const [visible, setVisible] = useState({});
 
   useEffect(() => {
@@ -94,8 +94,8 @@ export default function Home() {
         <TypingEffect />
         <div className="hero-buttons">
           {user ? (
-            <Link to="/dashboard">
-              <button className="btn btn-primary btn-large">Dashboard</button>
+            <Link to={isAdmin ? "/admin" : "/dashboard"}>
+              <button className="btn btn-primary btn-large">{isAdmin ? "Admin Panel" : "Dashboard"}</button>
             </Link>
           ) : (
             <Link to="/signup">

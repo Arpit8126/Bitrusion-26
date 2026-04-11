@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, where, onSnapshot, updateDoc, doc, deleteDoc, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, updateDoc, doc, deleteDoc, writeBatch, orderBy } from 'firebase/firestore';
 import { useAuth } from '../lib/AuthContext';
 
 export default function NotificationCenter() {
@@ -44,6 +44,23 @@ export default function NotificationCenter() {
     await updateDoc(doc(db, 'notifications', id), { read: true });
   };
 
+  const toggleDropdown = async () => {
+    const nextState = !isOpen;
+    setIsOpen(nextState);
+    
+    // If opening, mark all unread as read
+    if (nextState) {
+      const unread = notifications.filter(n => !n.read);
+      if (unread.length > 0) {
+        const batch = writeBatch(db);
+        unread.forEach(n => {
+          batch.update(doc(db, 'notifications', n.id), { read: true });
+        });
+        await batch.commit();
+      }
+    }
+  };
+
   const deleteNotification = async (id) => {
     await deleteDoc(doc(db, 'notifications', id));
   };
@@ -54,7 +71,7 @@ export default function NotificationCenter() {
     <div className="notification-center" ref={dropdownRef}>
       <button 
         className="notification-trigger" 
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={toggleDropdown}
         title="Notifications"
       >
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
@@ -65,11 +82,6 @@ export default function NotificationCenter() {
         <div className="notification-dropdown">
           <div className="notification-header">
             <h3>Notifications</h3>
-            {notifications.length > 0 && (
-              <button className="btn-text" onClick={() => notifications.forEach(n => markAsRead(n.id))}>
-                Mark all as read
-              </button>
-            )}
           </div>
           
           <div className="notification-list">

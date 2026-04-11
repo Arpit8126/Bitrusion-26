@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { db, auth } from '../lib/firebase';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs, updateDoc, writeBatch } from 'firebase/firestore';
 import GlitchText from '../components/GlitchText';
 
+import { useAuth } from '../lib/AuthContext';
+
 export default function AdminPortal() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const { user, isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -17,29 +19,7 @@ export default function AdminPortal() {
   const [rejectingTeam, setRejectingTeam] = useState(null);
   const [rejectionMessage, setRejectionMessage] = useState('');
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, password);
-      const adminRef = doc(db, 'admins', cred.user.uid);
-      const adminSnap = await getDoc(adminRef);
-      if (!adminSnap.exists()) {
-        setError('Access denied. You are not an admin.');
-        await auth.signOut();
-        setLoading(false);
-        return;
-      }
-      setIsAuthenticated(true);
-      fetchTeams();
-    } catch (err) {
-      setError('Login failed: ' + err.message.replace('Firebase: ', '').replace(/\(auth\/.*\)/, ''));
-    }
-    setLoading(false);
-  };
-
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     setLoading(true);
     try {
       const teamsSnap = await getDocs(collection(db, 'teams'));
@@ -65,7 +45,32 @@ export default function AdminPortal() {
       }
       setTeamMembers(membersMap);
     } catch (err) {
-      setError('Failed to fetch teams: ' + err.message);
+      console.error('Failed to fetch teams:', err);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    if (isAdmin) {
+      fetchTeams();
+    }
+  }, [isAdmin, fetchTeams]);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email, password);
+      // AuthContext will automatically detect this and set isAdmin
+      const adminRef = doc(db, 'admins', cred.user.uid);
+      const adminSnap = await getDoc(adminRef);
+      if (!adminSnap.exists()) {
+        setError('Access denied. You are not an admin.');
+        await auth.signOut();
+      }
+    } catch (err) {
+      setError('Login failed: ' + err.message.replace('Firebase: ', '').replace(/\(auth\/.*\)/, ''));
     }
     setLoading(false);
   };
@@ -176,7 +181,7 @@ export default function AdminPortal() {
   };
 
   // Login screen
-  if (!isAuthenticated) {
+  if (!user || !isAdmin) {
     return (
       <div className="auth-page page-enter">
         <div className="form-container">
