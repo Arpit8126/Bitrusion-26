@@ -20,7 +20,7 @@ export default function CreateTeam() {
   const { user, userProfile, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(1); // 1: choose type, 2: payment, 3: team name, 4: done
+  const [step, setStep] = useState(1); // 1: choose type, 2: team name, 3: payment, 4: done
   const [teamType, setTeamType] = useState(null); // 'individual' or 'team'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -43,20 +43,7 @@ export default function CreateTeam() {
   const [joinCode, setJoinCode] = useState('');
 
 
-  const handlePaymentNext = () => {
-    setError('');
-    if (!utr.trim()) {
-      setError('Please enter UTR number');
-      return;
-    }
-    if (!transactionId.trim()) {
-      setError('Please enter Transaction ID');
-      return;
-    }
-    setStep(3);
-  };
-
-  const handleCompleteRegistration = async () => {
+  const handleTeamNameNext = async () => {
     setError('');
     if (!teamName.trim()) {
       setError('Please enter a team name');
@@ -77,7 +64,27 @@ export default function CreateTeam() {
         setLoading(false);
         return;
       }
+      setStep(3);
+    } catch (err) {
+      setError('Failed to check name: ' + err.message);
+    }
+    setLoading(false);
+  };
 
+  const handleCompleteRegistration = async () => {
+    setError('');
+    if (!utr.trim()) {
+      setError('Please enter UTR number');
+      return;
+    }
+    if (!transactionId.trim()) {
+      setError('Please enter Transaction ID');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const nameLower = teamName.trim().toLowerCase();
       let code = null;
       if (teamType === 'team') {
         let unique = false;
@@ -179,8 +186,41 @@ export default function CreateTeam() {
           </>
         )}
 
-        {/* STEP 2: Payment */}
-        {step === 2 && (() => {
+        {/* STEP 2: Team Name */}
+        {step === 2 && (
+          <>
+            <GlitchText text="TEAM NAME" tag="h2" className="form-title" />
+            <p className="form-subtitle">Choose a unique name for your {teamType === 'individual' ? 'entry' : 'team'}</p>
+
+            <div className="form-group" style={{ marginTop: '2rem' }}>
+              <label className="form-label">Team Name</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Enter a unique team name"
+                value={teamName}
+                onChange={(e) => setTeamName(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button className="btn" onClick={() => { setStep(1); setError(''); }} style={{ flex: 1 }}>
+                ← Back
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleTeamNameNext}
+                disabled={loading}
+                style={{ flex: 2 }}
+              >
+                {loading ? 'Checking...' : 'Next →'}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* STEP 3: Payment */}
+        {step === 3 && (() => {
           console.log("Current VITE_UPI_ID loaded in app:", import.meta.env.VITE_UPI_ID);
           return (
             <>
@@ -202,6 +242,16 @@ export default function CreateTeam() {
               <p style={{ textAlign: 'center', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--warning)', marginBottom: '1.5rem' }}>
                 ₹{teamType === 'individual' ? '100' : '150'} — Scan & Pay
               </p>
+
+              {teamType === 'team' && (
+                <div className="admin-dash-card" style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(0, 229, 255, 0.05)', borderLeft: '4px solid var(--accent)' }}>
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-primary)', margin: 0 }}>
+                    <strong>ℹ️ NOTE:</strong> After clicking "Complete Registration", you will receive a <strong>Unique Team Code</strong>. 
+                    You can share this code with anyone you want in your team; they will be able to join via the <strong>"Join Team"</strong> section on their dashboard. 
+                    Building your team happens right after this registration step!
+                  </p>
+                </div>
+              )}
 
 
               <div className="form-group">
@@ -231,49 +281,21 @@ export default function CreateTeam() {
               </div>
 
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button className="btn" onClick={() => { setStep(1); setError(''); }} style={{ flex: 1 }}>
+                <button className="btn" onClick={() => { setStep(2); setError(''); }} style={{ flex: 1 }}>
                   ← Back
                 </button>
-                <button className="btn btn-primary" onClick={handlePaymentNext} style={{ flex: 2 }}>
-                  Next →
+                <button
+                  className="btn btn-primary"
+                  onClick={handleCompleteRegistration}
+                  disabled={loading}
+                  style={{ flex: 2 }}
+                >
+                  {loading ? 'Creating...' : '> Complete Registration'}
                 </button>
               </div>
             </>
           )
         })()}
-
-        {/* STEP 3: Team Name */}
-        {step === 3 && (
-          <>
-            <GlitchText text="TEAM NAME" tag="h2" className="form-title" />
-            <p className="form-subtitle">Choose a unique name for your {teamType === 'individual' ? 'entry' : 'team'}</p>
-
-            <div className="form-group" style={{ marginTop: '2rem' }}>
-              <label className="form-label">Team Name</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="Enter a unique team name"
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button className="btn" onClick={() => { setStep(2); setError(''); }} style={{ flex: 1 }}>
-                ← Back
-              </button>
-              <button
-                className="btn btn-primary"
-                onClick={handleCompleteRegistration}
-                disabled={loading}
-                style={{ flex: 2 }}
-              >
-                {loading ? 'Creating...' : '> Complete Registration'}
-              </button>
-            </div>
-          </>
-        )}
 
         {/* STEP 4: Done */}
         {step === 4 && (
