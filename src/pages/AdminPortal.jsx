@@ -96,7 +96,7 @@ export default function AdminPortal() {
       const message = rejectionMessage.trim() || 'No reason provided.';
       const finalMessage = `${message} (For any query reach out at support@codeshastra.tech)`;
       const submissionDate = teamToReject.updatedAt || teamToReject.createdAt;
-      
+
       // Update team status
       await updateDoc(doc(db, 'teams', rejectingTeam), {
         status: 'rejected',
@@ -106,7 +106,28 @@ export default function AdminPortal() {
       // Notify each member and clear their teamId
       const batch = writeBatch(db);
       const members = teamMembers[rejectingTeam] || [];
-      
+      const fullMemberDetails = members.map(m => ({ 
+        uid: m.uid, 
+        name: m.name, 
+        email: m.email,
+        mobile: m.mobile,
+        university: m.university,
+        course: m.course,
+        state: m.state,
+        district: m.district
+      }));
+
+      // Archive team before deletion
+      const archiveRef = doc(collection(db, 'team_archives'));
+      batch.set(archiveRef, {
+        ...teamToReject,
+        members: fullMemberDetails,
+        archivedAt: new Date().toISOString(),
+        archiveReason: 'admin_rejection',
+        rejectionReason: message,
+        archivedBy: 'admin'
+      });
+
       for (const member of members) {
         // Create notification
         const notifRef = doc(collection(db, 'notifications'));
@@ -115,7 +136,7 @@ export default function AdminPortal() {
           type: 'team_rejection',
           teamName: teamToReject.teamName,
           rejectionMessage: finalMessage,
-          teamDetails: members.map(m => ({ name: m.name, email: m.email })),
+          teamDetails: fullMemberDetails.map(m => ({ name: m.name, email: m.email })),
           submissionDate: submissionDate,
           rejectionDate: new Date().toISOString(),
           read: false,
@@ -126,13 +147,12 @@ export default function AdminPortal() {
         batch.update(userRef, { teamId: null });
       }
 
+      // Delete the team document to free up the name and join code
+      batch.delete(doc(db, 'teams', rejectingTeam));
+
       await batch.commit();
 
-      setTeams(teams.map(t => t.id === rejectingTeam ? {
-        ...t,
-        status: 'rejected',
-        rejectionMessage: message,
-      } : t));
+      setTeams(teams.filter(t => t.id !== rejectingTeam));
       setRejectingTeam(null);
       setRejectionMessage('');
       

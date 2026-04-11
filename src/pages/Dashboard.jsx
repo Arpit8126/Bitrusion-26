@@ -125,9 +125,28 @@ export default function Dashboard() {
           return;
         }
 
-        const batch = writeBatch(db);
-        const submissionDate = team.updatedAt || team.createdAt;
-        const membersListForNotif = teamMembers.map(m => ({ name: m.name, email: m.email }));
+        // Prepare full member details for audit trail
+        const fullMemberDetails = teamMembers.map(m => ({ 
+          uid: m.uid, 
+          name: m.name, 
+          email: m.email,
+          mobile: m.mobile,
+          university: m.university,
+          course: m.course,
+          state: m.state,
+          district: m.district
+        }));
+
+        const archiveRef = doc(collection(db, 'team_archives'));
+        batch.set(archiveRef, {
+          ...team,
+          members: fullMemberDetails,
+          archivedAt: new Date().toISOString(),
+          archiveReason: 'leader_left',
+          archivedBy: 'leader',
+          archivedByUid: user.uid,
+          archivedByName: userProfile.name
+        });
 
         // Unlink all members and notify them
         for (const member of teamMembers) {
@@ -140,7 +159,7 @@ export default function Dashboard() {
               type: 'team_deleted',
               teamName: team.teamName,
               rejectionMessage: 'Team leader left or deleted the team. (For any query reach out at support@codeshastra.tech)',
-              teamDetails: membersListForNotif,
+              teamDetails: fullMemberDetails.map(m => ({ name: m.name, email: m.email })),
               submissionDate: submissionDate,
               rejectionDate: new Date().toISOString(),
               read: false,

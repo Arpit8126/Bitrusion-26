@@ -78,7 +78,21 @@ export default function CreateTeam() {
         return;
       }
 
-      const code = teamType === 'team' ? generateJoinCode() : null;
+      let code = null;
+      if (teamType === 'team') {
+        let unique = false;
+        let attempts = 0;
+        while (!unique && attempts < 5) {
+          code = generateJoinCode();
+          const codeQuery = query(collection(db, 'teams'), where('joinCode', '==', code));
+          const codeSnap = await getDocs(codeQuery);
+          if (codeSnap.empty) {
+            unique = true;
+          }
+          attempts++;
+        }
+      }
+
       const teamId = `team_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       const teamData = {
