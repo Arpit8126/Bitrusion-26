@@ -214,6 +214,87 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ========== GUEST SPEAKER ========== */}
+      <section className={`section ${visible['speaker'] ? 'page-enter' : ''}`} id="speaker" style={{ marginTop: '2.5rem' }}>
+        <div className="section-header">
+          <GlitchText text="GUEST SPEAKER" tag="h2" className="section-title" />
+          <div className="section-divider" />
+          <p className="section-subtitle">
+            Insights from industry leaders to fuel your innovation journey.
+          </p>
+        </div>
+
+        <div className="speaker-profile-card">
+          <div className="speaker-image-container">
+            <div className="speaker-image-wrapper">
+              <img 
+                src="/Abhishek Rajan.jpg" 
+                alt="Abhishek Ranjan" 
+                className="speaker-image"
+                onError={(e) => {
+                  e.target.onerror = null;
+                  e.target.src = "https://via.placeholder.com/400x500/050a08/00ff41?text=ABHISHEK+RANJAN";
+                }}
+              />
+              <div className="scanline" />
+            </div>
+          </div>
+          
+          <div className="speaker-content">
+            <h3 className="speaker-name">Abhishek Ranjan</h3>
+            <span className="speaker-headline">Engineering the Future of AI</span>
+            
+            <div className="journey-grid">
+              <div className="journey-item">
+                <span className="journey-label">Current Role</span>
+                <span className="journey-value">AI Engineer Intern @ InfraX AI</span>
+              </div>
+              <div className="journey-item">
+                <span className="journey-label">Professional Background</span>
+                <span className="journey-value">Ex-SDE Intern @ Expedia Group</span>
+              </div>
+              <div className="journey-item">
+                <span className="journey-label">Community Impact</span>
+                <span className="journey-value">19.5K+ Followers</span>
+              </div>
+              <div className="journey-item">
+                <span className="journey-label">Academic Background</span>
+                <span className="journey-value">NIT Jaipur</span>
+              </div>
+            </div>
+
+            <div className="speaker-session-premium">
+              <span className="session-title">Featured Session:</span>
+              <p className="session-desc">Motivation & Career Roadmap Q&A</p>
+              <p className="cyber-card-text" style={{ fontSize: '0.9rem', marginTop: '0.75rem', opacity: 0.8 }}>
+                Navigating big-tech roles and driving AI innovation for 500+ student developers.
+              </p>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem', flexWrap: 'wrap' }}>
+                <a 
+                  href="https://www.instagram.com/abhishekranjan714/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="btn btn-primary" 
+                  style={{ fontSize: '0.75rem', padding: '0.4rem 1rem' }}
+                >
+                  Instagram
+                </a>
+                <a 
+                  href="https://www.linkedin.com/in/abhishek-ranjan-54838b274/" 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="btn" 
+                  style={{ fontSize: '0.75rem', padding: '0.4rem 1rem' }}
+                >
+                  LinkedIn
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
       {/* ========== PRIZES ========== */}
       <section className={`section ${visible['prizes'] ? 'page-enter' : ''}`} id="prizes">
         <div className="section-header">
